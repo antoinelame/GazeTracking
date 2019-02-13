@@ -33,6 +33,9 @@ class PupilDetector(object):
 
     def process(self, frame):
         """Run iris detection and pupil estimation"""
+        if frame is None:
+            return
+
         self.modified_frame = self.image_processing(frame)
 
         height, width = self.modified_frame.shape[:2]
