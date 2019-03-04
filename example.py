@@ -7,11 +7,16 @@ import cv2
 from gaze_tracking import GazeTracking
 
 gaze = GazeTracking()
+webcam = cv2.VideoCapture(0)
 
 while True:
-    gaze.refresh()
+    # We get a new frame from the webcam
+    _, frame = webcam.read()
 
-    frame = gaze.main_frame(True)
+    # We send this frame to GazeTracking to analyze it
+    gaze.refresh(frame)
+
+    frame = gaze.annotated_frame()
     text = ""
 
     if gaze.is_blinking():

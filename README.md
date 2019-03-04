@@ -44,13 +44,14 @@ python example.py
 import cv2
 from gaze_tracking import GazeTracking
 
-
 gaze = GazeTracking()
+webcam = cv2.VideoCapture(0)
 
 while True:
-    gaze.refresh()
+    _, frame = webcam.read()
+    gaze.refresh(frame)
 
-    frame = gaze.main_frame(True)
+    frame = gaze.annotated_frame()
     text = ""
 
     if gaze.is_right():
@@ -146,14 +147,10 @@ Returns `True` is the user's eyes are closed.
 ### Webcam frame
 
 ```python
-# Without pupils highlighting
-frame = gaze.main_frame(False)
-
-# With pupils highlighting
-frame = gaze.main_frame(True)
+frame = gaze.annotated_frame()
 ```
 
-Returns the main frame from the webcam.
+Returns the main frame with pupils highlighted.
 
 ## Licensing
 

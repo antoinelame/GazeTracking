@@ -11,15 +11,14 @@ class GazeTracking(object):
     """
 
     def __init__(self):
-        self.capture = cv2.VideoCapture(0)
         self.frame = None
         self.eyes = EyesDetector()
         self.pupil_left = PupilDetector()
         self.pupil_right = PupilDetector()
 
-    def refresh(self):
-        """Captures a new frame with the webcam and analyzes it."""
-        _, self.frame = self.capture.read()
+    def refresh(self, frame):
+        """Refresh the frame and analyzes it."""
+        self.frame = frame
         self.eyes.process(self.frame)
         self.pupil_left.process(self.eyes.frame_left)
         self.pupil_right.process(self.eyes.frame_right)
@@ -91,24 +90,19 @@ class GazeTracking(object):
         except TypeError:
             return None
 
-    def main_frame(self, highlighting=False):
-        """Returns the main frame from the webcam
-
-        Parameters:
-            - highlighting (bool): Highlights pupils
-        """
+    def annotated_frame(self):
+        """Returns the main frame with pupils highlighted """
         frame = self.frame.copy()
 
-        if highlighting:
-            try:
-                color = (0, 255, 0)
-                x_left, y_left = self.pupil_left_coords()
-                x_right, y_right = self.pupil_right_coords()
-                cv2.line(frame, (x_left - 5, y_left), (x_left + 5, y_left), color)
-                cv2.line(frame, (x_left, y_left - 5), (x_left, y_left + 5), color)
-                cv2.line(frame, (x_right - 5, y_right), (x_right + 5, y_right), color)
-                cv2.line(frame, (x_right, y_right - 5), (x_right, y_right + 5), color)
-            except TypeError:
-                pass
+        try:
+            color = (0, 255, 0)
+            x_left, y_left = self.pupil_left_coords()
+            x_right, y_right = self.pupil_right_coords()
+            cv2.line(frame, (x_left - 5, y_left), (x_left + 5, y_left), color)
+            cv2.line(frame, (x_left, y_left - 5), (x_left, y_left + 5), color)
+            cv2.line(frame, (x_right - 5, y_right), (x_right + 5, y_right), color)
+            cv2.line(frame, (x_right, y_right - 5), (x_right, y_right + 5), color)
+        except TypeError:
+            pass
 
         return frame
