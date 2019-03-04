@@ -51,7 +51,7 @@ while True:
     _, frame = webcam.read()
     gaze.refresh(frame)
 
-    frame = gaze.annotated_frame()
+    new_frame = gaze.annotated_frame()
     text = ""
 
     if gaze.is_right():
@@ -61,8 +61,8 @@ while True:
     elif gaze.is_center():
         text = "Looking center"
 
-    cv2.putText(frame, text, (60, 60), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 0, 0), 2)
-    cv2.imshow("Demo", frame)
+    cv2.putText(new_frame, text, (60, 60), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 0, 0), 2)
+    cv2.imshow("Demo", new_frame)
 
     if cv2.waitKey(1) == 27:
         break
