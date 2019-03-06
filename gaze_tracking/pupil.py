@@ -2,17 +2,18 @@ import numpy as np
 import cv2
 
 
-class PupilDetector(object):
+class Pupil(object):
     """
     This class detects the iris of an eye and estimates
     the position of the pupil
     """
 
-    def __init__(self):
-        self.modified_frame = None
-        self.center = None
+    def __init__(self, eye_frame):
+        self.iris_frame = None
         self.x = None
         self.y = None
+
+        self.detect_iris(eye_frame)
 
     @staticmethod
     def image_processing(eye_frame):
@@ -26,22 +27,16 @@ class PupilDetector(object):
         """
         kernel = np.ones((3, 3), np.uint8)
         new_frame = cv2.bilateralFilter(eye_frame, 10, 15, 15)
-        new_frame = cv2.threshold(new_frame, 20, 255, cv2.THRESH_BINARY)[1]
         new_frame = cv2.erode(new_frame, kernel, iterations=3)
-        new_frame = cv2.dilate(new_frame, kernel, iterations=2)
+        new_frame = cv2.threshold(new_frame, 20, 255, cv2.THRESH_BINARY)[1]
+
         return new_frame
 
-    def process(self, frame):
+    def detect_iris(self, eye_frame):
         """Run iris detection and pupil estimation"""
-        if frame is None:
-            return
+        self.iris_frame = self.image_processing(eye_frame)
 
-        self.modified_frame = self.image_processing(frame)
-
-        height, width = self.modified_frame.shape[:2]
-        self.center = (width / 2, height / 2)
-
-        _, contours, _ = cv2.findContours(self.modified_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        _, contours, _ = cv2.findContours(self.iris_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         contours = sorted(contours, key=cv2.contourArea)
 
         try:
