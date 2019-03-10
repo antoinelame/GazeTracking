@@ -10,15 +10,16 @@ class Eye(object):
     initiates the pupil detection.
     """
 
-    def __init__(self, original_frame, landmarks, points):
+    LEFT_EYE_POINTS = [36, 37, 38, 39, 40, 41]
+    RIGHT_EYE_POINTS = [42, 43, 44, 45, 46, 47]
+
+    def __init__(self, original_frame, landmarks, side, calibration):
         self.frame = None
         self.origin = None
         self.center = None
-        self.blinking = self._blinking_ratio(landmarks, points)
         self.pupil = None
 
-        self._isolate(original_frame, landmarks, points)
-        self.pupil = Pupil(self.frame)
+        self._analyze(original_frame, landmarks, side, calibration)
 
     @staticmethod
     def _middle_point(p1, p2):
@@ -80,3 +81,23 @@ class Eye(object):
         eye_height = math.hypot((top[0] - bottom[0]), (top[1] - bottom[1]))
 
         return eye_width / eye_height
+
+    def _analyze(self, original_frame, landmarks, side, calibration):
+        """Detects and isolates the eye in a new frame, sends data to the calibration
+        and initializes Pupil object
+        """
+        if side == 0:
+            points = self.LEFT_EYE_POINTS
+        elif side == 1:
+            points = self.RIGHT_EYE_POINTS
+        else:
+            return
+
+        self.blinking = self._blinking_ratio(landmarks, points)
+        self._isolate(original_frame, landmarks, points)
+
+        if not calibration.is_complete():
+            calibration.evaluate(self.frame, side)
+
+        threshold = calibration.threshold(side)
+        self.pupil = Pupil(self.frame, threshold)

@@ -2,6 +2,7 @@ import os
 import cv2
 import dlib
 from .eye import Eye
+from .calibration import Calibration
 
 
 class GazeTracking(object):
@@ -11,13 +12,11 @@ class GazeTracking(object):
     and the pupil and allows to know if the eyes are open or closed
     """
 
-    LEFT_EYE_POINTS = [36, 37, 38, 39, 40, 41]
-    RIGHT_EYE_POINTS = [42, 43, 44, 45, 46, 47]
-
     def __init__(self):
         self.frame = None
         self.eye_left = None
         self.eye_right = None
+        self.calibration = Calibration()
 
         # _face_detector is used to detect faces
         self._face_detector = dlib.get_frontal_face_detector()
@@ -46,8 +45,8 @@ class GazeTracking(object):
 
         try:
             landmarks = self._predictor(frame, faces[0])
-            self.eye_left = Eye(frame, landmarks, self.LEFT_EYE_POINTS)
-            self.eye_right = Eye(frame, landmarks, self.RIGHT_EYE_POINTS)
+            self.eye_left = Eye(frame, landmarks, 0, self.calibration)
+            self.eye_right = Eye(frame, landmarks, 1, self.calibration)
 
         except IndexError:
             self.eye_left = None
