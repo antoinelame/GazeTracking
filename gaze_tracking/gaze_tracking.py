@@ -10,7 +10,7 @@ class GazeTracking(object):
     """
     This class tracks the user's gaze.
     It provides useful information like the position of the eyes
-    and the pupil and allows to know if the eyes are open or closed
+    and pupils and allows to know if the eyes are open or closed
     """
 
     def __init__(self):
@@ -54,7 +54,11 @@ class GazeTracking(object):
             self.eye_right = None
 
     def refresh(self, frame):
-        """Refresh the frame and analyzes it."""
+        """Refreshes the frame and analyzes it.
+
+        Arguments:
+            frame (numpy.ndarray): The frame to analyze
+        """
         self.frame = frame
         self._analyze()
 

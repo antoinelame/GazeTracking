@@ -71,6 +71,9 @@ class Eye(object):
         Arguments:
             landmarks (dlib.full_object_detection): Facial landmarks for the face region
             points (list): Points of an eye (from the 68 Multi-PIE landmarks)
+
+        Returns:
+            The computed ratio
         """
         left = (landmarks.part(points[0]).x, landmarks.part(points[0]).y)
         right = (landmarks.part(points[3]).x, landmarks.part(points[3]).y)
@@ -84,7 +87,13 @@ class Eye(object):
 
     def _analyze(self, original_frame, landmarks, side, calibration):
         """Detects and isolates the eye in a new frame, sends data to the calibration
-        and initializes Pupil object
+        and initializes Pupil object.
+
+        Arguments:
+            original_frame (numpy.ndarray): Frame passed by the user
+            landmarks (dlib.full_object_detection): Facial landmarks for the face region
+            side: Indicates whether it's the left eye (0) or the right eye (1)
+            calibration (calibration.Calibration): Manages the binarization threshold value
         """
         if side == 0:
             points = self.LEFT_EYE_POINTS

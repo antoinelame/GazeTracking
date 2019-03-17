@@ -5,8 +5,8 @@ from .pupil import Pupil
 
 class Calibration(object):
     """
-    This class calibrates the pupil detection algorithm by finding
-    the best threshold value for the person and the webcam.
+    This class calibrates the pupil detection algorithm by finding the
+    best binarization threshold value for the person and the webcam.
     """
 
     def __init__(self):
@@ -22,7 +22,7 @@ class Calibration(object):
         """Returns the threshold value for the given eye.
 
         Argument:
-            side: 0 for left and 1 for right
+            side: Indicates whether it's the left eye (0) or the right eye (1)
         """
         if side == 0:
             return int(sum(self.thresholds_left) / len(self.thresholds_left))
@@ -35,7 +35,7 @@ class Calibration(object):
         the surface of the eye.
 
         Argument:
-            frame: the iris frame
+            frame (numpy.ndarray): Binarized iris frame
         """
         frame = frame[5:-5, 5:-5]
         height, width = frame.shape[:2]
@@ -45,10 +45,11 @@ class Calibration(object):
 
     @staticmethod
     def find_best_threshold(eye_frame):
-        """Calculates the optimal threshold for the given eye.
+        """Calculates the optimal threshold to binarize the
+        frame for the given eye.
 
         Argument:
-            eye_frame: eye's frame to analyse
+            eye_frame (numpy.ndarray): Frame of the eye to be analyzed
         """
         average_iris_size = 0.48
         trials = {}
@@ -65,8 +66,8 @@ class Calibration(object):
         given image.
 
         Arguments:
-            eye_frame: eye's frame
-            side: 0 for left and 1 for right
+            eye_frame (numpy.ndarray): Frame of the eye
+            side: Indicates whether it's the left eye (0) or the right eye (1)
         """
         threshold = self.find_best_threshold(eye_frame)
 
