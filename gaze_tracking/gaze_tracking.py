@@ -133,7 +133,7 @@ class GazeTracking(object):
             return blinking_ratio > 3.8
 
     def annotated_frame(self):
-        """Returns the main frame with pupils highlighted"""
+        """Returns the 68 landmark points, pupil along with main frame highlighted"""
         frame = self.frame.copy()
         frame2 = self.frame.copy()
         landmark_points = []
