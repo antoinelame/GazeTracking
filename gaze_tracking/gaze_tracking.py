@@ -2,6 +2,7 @@ from __future__ import division
 import os
 import cv2
 import dlib
+from imutils import face_utils
 from .eye import Eye
 from .calibration import Calibration
 
@@ -24,7 +25,7 @@ class GazeTracking(object):
 
         # _predictor is used to get facial landmarks of a given face
         cwd = os.path.abspath(os.path.dirname(__file__))
-        model_path = os.path.abspath(os.path.join(cwd, "trained_models/shape_predictor_68_face_landmarks.dat"))
+        model_path = os.path.abspath(os.path.join(cwd, "trained_models/landmarks.dat"))
         self._predictor = dlib.shape_predictor(model_path)
 
     @property
@@ -75,6 +76,20 @@ class GazeTracking(object):
             x = self.eye_right.origin[0] + self.eye_left.pupil.x
             y = self.eye_right.origin[1] + self.eye_left.pupil.y
             return (x, y)
+    
+    def landmarks_face(self):
+        """Returns the coordinates of the 68 landmark points"""
+        landmark_points = []
+        if self.pupils_located:
+            rects = self._face_detector(self.frame,1)
+            for(i,rect) in enumerate(rects):
+                shape = self._predictor(self.frame,rect)
+                shape = face_utils.shape_to_np(shape)
+                (x,y,w,h) = face_utils.rect_to_bb(rect)
+                cv2.rectangle(self.frame,(x,y),(x+w,y+h),(0,255,0),2)
+                for(x,y)in shape:
+                    landmark_points.append((x,y))
+        return landmark_points
 
     def horizontal_ratio(self):
         """Returns a number between 0.0 and 1.0 that indicates the
@@ -120,7 +135,8 @@ class GazeTracking(object):
     def annotated_frame(self):
         """Returns the main frame with pupils highlighted"""
         frame = self.frame.copy()
-
+        frame2 = self.frame.copy()
+        landmark_points = []
         if self.pupils_located:
             color = (0, 255, 0)
             x_left, y_left = self.pupil_left_coords()
@@ -129,5 +145,16 @@ class GazeTracking(object):
             cv2.line(frame, (x_left, y_left - 5), (x_left, y_left + 5), color)
             cv2.line(frame, (x_right - 5, y_right), (x_right + 5, y_right), color)
             cv2.line(frame, (x_right, y_right - 5), (x_right, y_right + 5), color)
-
-        return frame
+            
+            rects = self._face_detector(frame2,1)
+            for(i,rect) in enumerate(rects):
+                shape = self._predictor(frame2,rect)
+                shape = face_utils.shape_to_np(shape)
+                (x,y,w,h) = face_utils.rect_to_bb(rect)
+                cv2.rectangle(frame2,(x,y),(x+w,y+h),(0,255,0),2)
+                for(x,y)in shape:
+                    cv2.circle(frame,(x,y),1,(0,0,255),-1)
+                    landmark_points.append((x,y))
+            landmark_points.append((x_left, y_left))
+            landmark_points.append((x_right, y_right))
+        return (frame, landmark_points)
