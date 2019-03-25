@@ -153,11 +153,17 @@ frame = gaze.annotated_frame()
 
 Returns the main frame with pupils highlighted.
 
+## Extracting 70 landmark points
+Please go through 68+2 landmark points notebook. Below is one of the results, you'll also be getting an arraw of size (70,2)
+
+![Alt text](70_landmark_results.png?raw=true "Idea Flow")
+
 ## You want to help?
 
 Your suggestions, bugs reports and pull requests are welcome and appreciated. You can also starring ⭐️ the project!
 
 If the detection of your pupils is not completely optimal, you can send me a video sample of you looking in different directions. I would use it to improve the algorithm.
+
 
 ## Licensing
 
