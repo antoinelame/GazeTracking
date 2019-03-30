@@ -83,7 +83,12 @@ class Eye(object):
         eye_width = math.hypot((left[0] - right[0]), (left[1] - right[1]))
         eye_height = math.hypot((top[0] - bottom[0]), (top[1] - bottom[1]))
 
-        return eye_width / eye_height
+        try:
+            ratio = eye_width / eye_height
+        except ZeroDivisionError:
+            ratio = None
+
+        return ratio
 
     def _analyze(self, original_frame, landmarks, side, calibration):
         """Detects and isolates the eye in a new frame, sends data to the calibration
