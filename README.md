@@ -17,13 +17,7 @@ Clone this project:
 git clone https://github.com/antoinelame/GazeTracking.git
 ```
 
-GazeTracking requires these dependencies:
-
-* NumPy
-* OpenCV 3.4
-* Dlib
-
-To install them:
+Install these dependencies (NumPy, OpenCV, Dlib):
 
 ```
 pip install -r requirements.txt
@@ -38,6 +32,8 @@ Run the demo:
 ```
 python example.py
 ```
+
+> If you have a "**RuntimeError: Error deserializing object of type int**" exception, it's because you downloaded the project as a ZIP instead of cloning it. In this case, you miss the `shape_predictor_68_face_landmarks.dat` file. Make sure to download it manually.
 
 ## Simple Demo
 
