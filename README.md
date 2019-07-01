@@ -33,8 +33,6 @@ Run the demo:
 python example.py
 ```
 
-> If you have a "**RuntimeError: Error deserializing object of type int**" exception, it's because you downloaded the project as a ZIP instead of cloning it. In this case, you miss the `shape_predictor_68_face_landmarks.dat` file. Make sure to download it manually.
-
 ## Simple Demo
 
 ```python
