@@ -65,15 +65,15 @@ while True:
 
 ## Documentation
 
-In the following examples, ```gaze``` refers to an instance of the ```GazeTracking``` class.
+In the following examples, `gaze` refers to an instance of the `GazeTracking` class.
 
 ### Refresh the frame
 
 ```python
-gaze.refresh()
+gaze.refresh(frame)
 ```
 
-Captures a new frame with the webcam and analyzes it.
+Pass the frame to analyze (numpy.ndarray). If you want to work with a video stream, you need to put this instruction in a loop, like the example above.
 
 ### Position of the left pupil
 
