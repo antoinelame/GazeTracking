@@ -9,6 +9,8 @@ This is a Python (2 and 3) library that provides a **webcam-based eye tracking s
 
 [![Demo](https://i.imgur.com/WNqgQkO.gif)](https://youtu.be/YEZMk1P0-yw)
 
+_🚀 Quick note: I'm looking for job opportunities as a software developer, for exciting projects in ambitious companies. Anywhere in the world. Send me an email!_
+
 ## Installation
 
 Clone this project:
