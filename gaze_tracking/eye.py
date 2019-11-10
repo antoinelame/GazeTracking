@@ -4,8 +4,7 @@ import cv2
 from .pupil import Pupil
 
 
-# Detects the iris and estimates the position of the iris by
-# calculating the centroid.
+# Detects the iris and estimates the position of the iris by calculating the centroid.
 # Arguments:
 #     eye_frame (numpy.ndarray): Frame containing an eye and nothing else
 class Eye(object):

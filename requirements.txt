@@ -1,3 +1,4 @@
+screeninfo
 numpy
 opencv_python
 dlib

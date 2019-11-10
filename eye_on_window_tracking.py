@@ -17,6 +17,19 @@ up_y = 60
 level_y = 300
 down_y = 500
 (x, y) = (center_x, level_y)
+# for displaying calibration points
+screen_size = (1280, 720)
+circle_rad = 20
+calib_points = [(circle_rad, circle_rad),
+                (screen_size[0] - circle_rad, circle_rad),
+                (screen_size[0] - circle_rad, screen_size[1] - circle_rad),
+                (circle_rad, screen_size[1] - circle_rad),
+                (screen_size[0]//2 - circle_rad, screen_size[1]//2 - circle_rad)]
+screen_corner = 0
+t = 1
+cv2.namedWindow('Calibration', cv2.WINDOW_KEEPRATIO)
+cv2.setWindowProperty('Calibration', cv2.WND_PROP_ASPECT_RATIO, cv2.WINDOW_KEEPRATIO)
+cv2.setWindowProperty('Calibration', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 while True:
     # We get a new frame from the webcam
@@ -58,7 +71,17 @@ while True:
             y = level_y
 
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_DUPLEX, 1.6, (147, 58, 31), 2)
-    cv2.imshow("Demo", frame)
+
+    if screen_corner < len(calib_points):
+        # draw a red calibration circle. Params: center, rad, color, ..
+        cv2.circle(frame, calib_points[screen_corner], circle_rad, (0, 0, 255), -1)
+        if t % 25 == 0:
+            screen_corner = screen_corner + 1
+            t = 1
+        else:
+            t = t + 1
+
+    cv2.imshow('Calibration', frame)
 
     if cv2.waitKey(1) == 27:
         break
