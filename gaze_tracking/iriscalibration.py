@@ -3,9 +3,9 @@ import cv2
 from .pupil import Pupil
 
 
-#     This class calibrates the pupil detection algorithm by finding the
-#     best binarization threshold value for the person and the webcam.
-class Calibration(object):
+# This class calibrates the pupil detection algorithm by finding the
+# best binarization threshold value for the person and the webcam.
+class IrisCalibration(object):
 
     def __init__(self):
         self.nb_frames = 20
@@ -14,7 +14,8 @@ class Calibration(object):
 
     # Returns true if the calibration is completed
     def is_complete(self):
-        return len(self.thresholds_left) >= self.nb_frames and len(self.thresholds_right) >= self.nb_frames
+        return len(self.thresholds_left) >= self.nb_frames and \
+               len(self.thresholds_right) >= self.nb_frames
 
     # Returns the threshold value for the given eye.
     # Argument:
@@ -48,7 +49,7 @@ class Calibration(object):
 
         for threshold in range(5, 100, 5):
             iris_frame = Pupil.image_processing(eye_frame, threshold)
-            trials[threshold] = Calibration.iris_size(iris_frame)
+            trials[threshold] = IrisCalibration.iris_size(iris_frame)
 
         best_threshold, iris_size = min(trials.items(), key=(lambda p: abs(p[1] - average_iris_size)))
         return best_threshold

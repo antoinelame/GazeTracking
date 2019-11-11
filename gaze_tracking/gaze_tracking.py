@@ -3,8 +3,8 @@ import os
 import cv2
 import dlib
 from .eye import Eye
-from .calibration import Calibration
-
+from .iriscalibration import IrisCalibration
+from .gazecalibration import GazeCalibration
 
 # This class tracks the user's gaze.
 # It provides useful information like the position of the eyes
@@ -15,7 +15,7 @@ class GazeTracking(object):
         self.frame = None
         self.eye_left = None
         self.eye_right = None
-        self.calibration = Calibration()
+        self.calibration = IrisCalibration()
 
         # _face_detector is used to detect faces
         self._face_detector = dlib.get_frontal_face_detector()
@@ -63,14 +63,14 @@ class GazeTracking(object):
         if self.pupils_located:
             x = self.eye_left.origin[0] + self.eye_left.pupil.x
             y = self.eye_left.origin[1] + self.eye_left.pupil.y
-            return (x, y)
+            return x, y
 
     # Returns the coordinates of the right pupil
     def pupil_right_coords(self):
         if self.pupils_located:
             x = self.eye_right.origin[0] + self.eye_right.pupil.x
             y = self.eye_right.origin[1] + self.eye_right.pupil.y
-            return (x, y)
+            return x, y
 
     # Returns a number between 0.0 and 1.0 that indicates the direction of the gaze. The extreme right is 0.0,
     # the center is 0.5 and the extreme left is 1.0 The actual min and max that can be achieved by the
@@ -84,6 +84,8 @@ class GazeTracking(object):
             pupil_left = (self.eye_left.pupil.x - 5) / (2 * (self.eye_left.center[0] - 5))
             pupil_right = (self.eye_right.pupil.x - 5) / (2 * (self.eye_right.center[0] - 5))
             return (pupil_left + pupil_right) / 2
+        else:
+            return -1
 
     # Returns a number between 0.0 and 1.0 that indicates the
     # vertical direction of the gaze. The extreme top is 0.0,
@@ -93,6 +95,21 @@ class GazeTracking(object):
             pupil_left = (self.eye_left.pupil.y - 5) / (2 * (self.eye_left.center[1] - 5))
             pupil_right = (self.eye_right.pupil.y - 5) / (2 * (self.eye_right.center[1] - 5))
             return (pupil_left + pupil_right) / 2
+        else:
+            return -1
+
+    # Estimate the point of gaze on the computer screen based on the
+    # horizontal and vertical ratios.
+    def point_of_gaze(self, gaze_calib: GazeCalibration, screen_size=None):
+        if screen_size is None:
+            screen_size = (gaze_calib.ww, gaze_calib.wh)
+        try:
+            est_x = round(((self.horizontal_ratio() - gaze_calib.minhr) * screen_size[0]) / (gaze_calib.maxhr - gaze_calib.minhr))
+            est_y = round(((self.vertical_ratio() - gaze_calib.minvr) * screen_size[1]) / (gaze_calib.maxvr - gaze_calib.minvr))
+            return est_x, est_y
+        except ZeroDivisionError:
+            print('Division attempted by diff between: ', (gaze_calib.maxhr, gaze_calib.minhr))
+            raise ValueError
 
     # Returns true if the user is looking to the right
     def is_right(self):
@@ -137,8 +154,6 @@ class GazeTracking(object):
 
         if self.pupils_located:
             color = (0, 255, 0)
-            print(self.eye_left.center, (self.eye_left.pupil.x, self.eye_left.pupil.y), self.eye_right.center,
-                  (self.eye_right.pupil.x, self.eye_right.pupil.y))
             x_left, y_left = self.pupil_left_coords()
             x_right, y_right = self.pupil_right_coords()
             cv2.line(frame, (x_left - 5, y_left), (x_left + 5, y_left), color)
