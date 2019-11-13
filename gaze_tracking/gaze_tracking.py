@@ -6,6 +6,7 @@ from .eye import Eye
 from .iriscalibration import IrisCalibration
 from .gazecalibration import GazeCalibration
 
+
 # This class tracks the user's gaze.
 # It provides useful information like the position of the eyes
 # and pupils and allows to know if the eyes are open or closed
@@ -84,8 +85,6 @@ class GazeTracking(object):
             pupil_left = (self.eye_left.pupil.x - 5) / (2 * (self.eye_left.center[0] - 5))
             pupil_right = (self.eye_right.pupil.x - 5) / (2 * (self.eye_right.center[0] - 5))
             return (pupil_left + pupil_right) / 2
-        else:
-            return -1
 
     # Returns a number between 0.0 and 1.0 that indicates the
     # vertical direction of the gaze. The extreme top is 0.0,
@@ -95,21 +94,18 @@ class GazeTracking(object):
             pupil_left = (self.eye_left.pupil.y - 5) / (2 * (self.eye_left.center[1] - 5))
             pupil_right = (self.eye_right.pupil.y - 5) / (2 * (self.eye_right.center[1] - 5))
             return (pupil_left + pupil_right) / 2
-        else:
-            return -1
 
     # Estimate the point of gaze on the computer screen based on the
     # horizontal and vertical ratios.
     def point_of_gaze(self, gaze_calib: GazeCalibration, screen_size=None):
-        if screen_size is None:
-            screen_size = (gaze_calib.ww, gaze_calib.wh)
-        try:
-            est_x = round(((self.horizontal_ratio() - gaze_calib.minhr) * screen_size[0]) / (gaze_calib.maxhr - gaze_calib.minhr))
-            est_y = round(((self.vertical_ratio() - gaze_calib.minvr) * screen_size[1]) / (gaze_calib.maxvr - gaze_calib.minvr))
+        if self.pupils_located:
+            if screen_size is None:
+                screen_size = (gaze_calib.ww, gaze_calib.wh)
+            est_x = round(((gaze_calib.leftmost_hr - self.horizontal_ratio()) * screen_size[0]) /
+                          (gaze_calib.leftmost_hr - gaze_calib.rightmost_hr))
+            est_y = round(((self.vertical_ratio() - gaze_calib.top_vr) * screen_size[1]) /
+                          (gaze_calib.bottom_vr - gaze_calib.top_vr))
             return est_x, est_y
-        except ZeroDivisionError:
-            print('Division attempted by diff between: ', (gaze_calib.maxhr, gaze_calib.minhr))
-            raise ValueError
 
     # Returns true if the user is looking to the right
     def is_right(self):
