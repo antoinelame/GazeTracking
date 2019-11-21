@@ -28,7 +28,7 @@ class Eye(object):
     def _middle_point(p1, p2):
         x = int((p1.x + p2.x) / 2)
         y = int((p1.y + p2.y) / 2)
-        return (x, y)
+        return x, y
 
     # Isolate an eye, to have a frame without other part of the face.
     # Arguments:
@@ -36,14 +36,19 @@ class Eye(object):
     #     landmarks (dlib.full_object_detection): Facial landmarks for the face region
     #     points (list): Points of an eye (from the 68 Multi-PIE landmarks)
     def _isolate(self, frame, landmarks, points):
+        # put the six landmark coordinates for the eye into an array
         region = np.array([(landmarks.part(point).x, landmarks.part(point).y) for point in points])
         region = region.astype(np.int32)
 
         # Applying a mask to get only the eye
         height, width = frame.shape[:2]
+        # black array the size of the webcam image
         black_frame = np.zeros((height, width), np.uint8)
+        # white array the size of the webcam image
         mask = np.full((height, width), 255, np.uint8)
+        # in the white mask, fill eye shape (contour given by landmarks) with black
         cv2.fillPoly(mask, [region], (0, 0, 0))
+        # keep only the eye in the webcam image copy (par: src, dst, mask)
         eye = cv2.bitwise_not(black_frame, frame.copy(), mask=mask)
 
         # Cropping on the eye

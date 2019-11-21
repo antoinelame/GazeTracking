@@ -1,9 +1,9 @@
 from __future__ import division
+import math
 import os
 import cv2
 import dlib
 from .eye import Eye
-from .iriscalibration import IrisCalibration
 from .gazecalibration import GazeCalibration
 
 
@@ -12,11 +12,12 @@ from .gazecalibration import GazeCalibration
 # and pupils and allows to know if the eyes are open or closed
 class GazeTracking(object):
 
-    def __init__(self):
+    def __init__(self, iris_calibration):
         self.frame = None
         self.eye_left = None
         self.eye_right = None
-        self.calibration = IrisCalibration()
+        self.calibration = iris_calibration
+        self.current_iris_size = None
 
         # _face_detector is used to detect faces
         self._face_detector = dlib.get_frontal_face_detector()
@@ -82,8 +83,8 @@ class GazeTracking(object):
             # Remove padding (5 px) from both the eye coord and pupil coord to get
             # the two actual distances from eye corner. Then divide to obtain relative position
             # of pupil wrt eye width.
-            pupil_left = (self.eye_left.pupil.x - 5) / (2 * (self.eye_left.center[0] - 5))
-            pupil_right = (self.eye_right.pupil.x - 5) / (2 * (self.eye_right.center[0] - 5))
+            pupil_left = self.eye_left.pupil.x / (2 * (self.eye_left.center[0] - 5))
+            pupil_right = self.eye_right.pupil.x / (2 * (self.eye_right.center[0] - 5))
             return (pupil_left + pupil_right) / 2
 
     # Returns a number between 0.0 and 1.0 that indicates the
@@ -91,21 +92,47 @@ class GazeTracking(object):
     # the center is 0.5 and the extreme bottom is 1.0
     def vertical_ratio(self):
         if self.pupils_located:
-            pupil_left = (self.eye_left.pupil.y - 5) / (2 * (self.eye_left.center[1] - 5))
-            pupil_right = (self.eye_right.pupil.y - 5) / (2 * (self.eye_right.center[1] - 5))
+            pupil_left = self.eye_left.pupil.y / (2 * (self.eye_left.center[1] - 5))
+            pupil_right = self.eye_right.pupil.y / (2 * (self.eye_right.center[1] - 5))
             return (pupil_left + pupil_right) / 2
 
     # Estimate the point of gaze on the computer screen based on the
     # horizontal and vertical ratios.
-    def point_of_gaze(self, gaze_calib: GazeCalibration, screen_size=None):
+    def point_of_gaze(self, gaze_calib: GazeCalibration):
+        if self.current_iris_size is None:
+            self.current_iris_size = gaze_calib.base_iris_size
+        # if > 1, curr is further away compared to base, if < 1 user has moved nearer
+        dist_factor = gaze_calib.base_iris_size / self.current_iris_size
         if self.pupils_located:
-            if screen_size is None:
-                screen_size = (gaze_calib.ww, gaze_calib.wh)
-            est_x = round(((gaze_calib.leftmost_hr - self.horizontal_ratio()) * screen_size[0]) /
+            est_x = round((max(gaze_calib.leftmost_hr - self.horizontal_ratio(), 0) * gaze_calib.fsw * dist_factor) /
                           (gaze_calib.leftmost_hr - gaze_calib.rightmost_hr))
-            est_y = round(((self.vertical_ratio() - gaze_calib.top_vr) * screen_size[1]) /
+            est_y = round((max(self.vertical_ratio() - gaze_calib.top_vr, 0) * gaze_calib.fsh * dist_factor) /
                           (gaze_calib.bottom_vr - gaze_calib.top_vr))
+            if self.looking_straight_ahead(est_x, est_y, gaze_calib):
+                self.current_iris_size = self.iris_diameter()
             return est_x, est_y
+
+    @staticmethod
+    def looking_straight_ahead(est_x, est_y, gaze_calib):
+        wmargin = gaze_calib.fsw * 0.2
+        hmargin = gaze_calib.fsh * 0.3
+        wmiddle = gaze_calib.fsw / 2
+        hmiddle = gaze_calib.fsh / 2
+        return wmiddle - wmargin < est_x < wmiddle + wmargin and hmiddle - hmargin < est_y < hmiddle + hmargin
+
+    # Returns the absolute size (number of pixels) that the iris takes up on
+    # the surface of the eye frame. frame (numpy.ndarray): Binarized iris frame,
+    # i.e. eye-sized frame, where only the iris is visible (is black).
+    def iris_diameter(self):
+        right_frame = self.eye_right.frame[5:-5, 5:-5]
+        left_frame = self.eye_left.frame[5:-5, 5:-5]
+        nb_blacks_r = cv2.countNonZero(right_frame)
+        nb_blacks_l = cv2.countNonZero(left_frame)
+        # nb_blacks: approximation for iris area
+        rad_r = math.sqrt(nb_blacks_r / math.pi)
+        rad_l = math.sqrt(nb_blacks_l / math.pi)
+        # return diameter (avg over right and left eye)
+        return rad_r + rad_l
 
     # Returns true if the user is looking to the right
     def is_right(self):

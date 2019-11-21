@@ -27,7 +27,7 @@ class IrisCalibration(object):
             return int(sum(self.thresholds_right) / len(self.thresholds_right))
 
     # Returns the percentage of space that the iris takes up on
-    # the surface of the eye.
+    # the surface of the eye frame.
     # Argument:
     #     frame (numpy.ndarray): Binarized iris frame
     @staticmethod
@@ -47,7 +47,7 @@ class IrisCalibration(object):
         average_iris_size = 0.48
         trials = {}
 
-        for threshold in range(5, 100, 5):
+        for threshold in range(0, 200, 1):
             iris_frame = Pupil.image_processing(eye_frame, threshold)
             trials[threshold] = IrisCalibration.iris_size(iris_frame)
 
