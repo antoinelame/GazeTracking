@@ -4,12 +4,8 @@ import numpy as np
 from random import randint
 
 
-# TODO: calculate error (inaccuracy)
-# TODO: test the effect of head movements
 # This class calibrates the mapping of gaze to the screen size
 # that the user is looking at.
-
-
 class GazeCalibration(object):
     circle_rad: int
 
