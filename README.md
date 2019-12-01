@@ -45,15 +45,18 @@ python epog.py
 Demonstration of the eye point of gaze (EPOG) tracking library.
 
 Call like this:
->> ./epog.py 'log_file_prefix' '1'
+>> ./epog.py 1 'log_file_prefix'
 
-'log_file_prefix': a file is created for every run
-'1': do stabilize estimated EPOG w.r.t. previous cluster of EPOGs
-'0': allow spurious EPOGs (do not stabilize)
+'1': stabilize estimated EPOG w.r.t. previous cluster of EPOGs
+'0': allow spurious EPOGs that deviate from cluster (default)
+
+'log_file_prefix': (e.g. user_id) A logfile will be created with the errors, i.e.
+the Euclidean distance (in pixels) between test points and corresponding estimated EPOGs.
+Log file will be e.g. test_errors/'log_file_prefix'_stab_01-12-2019_18.36.44.txt
+If log_file_prefix is omitted, log file will not be created.
 
 Check the README.md for complete documentation.
 """
-
 
 from __future__ import division
 import sys
@@ -62,13 +65,29 @@ from gaze_tracking import GazeTracking
 from gaze_tracking.gazecalibration import GazeCalibration
 from gaze_tracking.iriscalibration import IrisCalibration
 from screeninfo import get_monitors
+import datetime
+import os
 
-user_id = sys.argv[1]
-if sys.argv[2] == '1':
-    stabilize = True
+stabilize = False
+if sys.argv.__len__() > 1:
+    if sys.argv[1] == '1':
+        stabilize = True
+
+test_error_file = None
+if sys.argv.__len__() > 2:
+    prefix = sys.argv[2]
+    if not os.path.isdir('test_errors'):
+        os.makedirs('test_errors')
+    if stabilize is True:
+        test_error_file = open('test_errors/' + prefix + '_stab_' +
+                               datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
+        print('Stabilize: ', stabilize, 'Log test errors in file: ', test_error_file)
+    elif stabilize is False:
+        test_error_file = open('test_errors/' + prefix + '_raw_' +
+                               datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
+    print('Stabilize: ', stabilize, 'Log test errors in file: ', test_error_file)
 else:
-    stabilize = False
-print(user_id, stabilize)
+    print('Stabilize: ', stabilize)
 
 
 def setup_iris_calib_window():
@@ -98,7 +117,7 @@ webcam = cv2.VideoCapture(0)
 windows_closed = False
 iris_calib = IrisCalibration()
 gaze = GazeTracking(iris_calib, monitor, stabilize)
-gaze_calib = GazeCalibration(webcam, monitor, user_id, stabilize)
+gaze_calib = GazeCalibration(webcam, monitor, test_error_file)
 
 while True:
     # We get a new frame from the webcam
@@ -125,7 +144,7 @@ while True:
         elif not gaze_calib.is_tested():
             calib_frame = gaze_calib.test_gaze(gaze)
             cv2.imshow(calib_window, calib_frame)
-        # track eye point of gaze on the screen
+        # get the calibration window out of the way
         elif not windows_closed:
             cv2.destroyAllWindows()
             windows_closed = True
@@ -133,9 +152,11 @@ while True:
         # continue to unobtrusively estimate eye point of gaze
         else:
             screen_x, screen_y = gaze.point_of_gaze(gaze_calib)
+            if screen_x is not None and screen_y is not None:
+                pass  # or instead do something useful with the EPOG data
 
-        if cv2.waitKey(1) == 27:  # Esc
-            # When everything done, release video capture
+        if cv2.waitKey(1) == 27:  # Press Esc to quit
+            # Release video capture
             webcam.release()
             cv2.destroyAllWindows()
             break
