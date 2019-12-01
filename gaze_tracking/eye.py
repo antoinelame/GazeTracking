@@ -4,10 +4,11 @@ import cv2
 from .pupil import Pupil
 
 
-# Detects the iris and estimates the position of the iris by calculating the centroid.
-# Arguments:
-#     eye_frame (numpy.ndarray): Frame containing an eye and nothing else
 class Eye(object):
+    """
+    Detects the iris and estimates the position of the iris by calculating the centroid.
+    :param eye_frame (numpy.ndarray): Frame containing an eye and nothing else
+    """
 
     LEFT_EYE_POINTS = [36, 37, 38, 39, 40, 41]
     RIGHT_EYE_POINTS = [42, 43, 44, 45, 46, 47]
@@ -20,22 +21,28 @@ class Eye(object):
 
         self._analyze(original_frame, landmarks, side, calibration)
 
-    # Returns the middle point (x,y) between two points
-    # Arguments:
-    #     p1 (dlib.point): First point
-    #     p2 (dlib.point): Second point
     @staticmethod
     def _middle_point(p1, p2):
+        """
+        Returns the middle point (x,y) between two points
+
+        :param p1 (dlib.point): First point
+        :param (dlib.point): Second point
+        :return: the point in the middle of p1 and p2
+        """
         x = int((p1.x + p2.x) / 2)
         y = int((p1.y + p2.y) / 2)
         return x, y
 
-    # Isolate an eye, to have a frame without other part of the face.
-    # Arguments:
-    #     frame (numpy.ndarray): Frame containing the face
-    #     landmarks (dlib.full_object_detection): Facial landmarks for the face region
-    #     points (list): Points of an eye (from the 68 Multi-PIE landmarks)
     def _isolate(self, frame, landmarks, points):
+        """
+        Isolate an eye, to have a frame without other part of the face.
+
+        :param (numpy.ndarray): Frame containing the face
+        :param landmarks (dlib.full_object_detection): Facial landmarks for the face region
+        :param (list): Points of an eye (from the 68 Multi-PIE landmarks)
+        :return: -
+        """
         # put the six landmark coordinates for the eye into an array
         region = np.array([(landmarks.part(point).x, landmarks.part(point).y) for point in points])
         region = region.astype(np.int32)
@@ -64,14 +71,15 @@ class Eye(object):
         height, width = self.frame.shape[:2]
         self.center = (width / 2, height / 2)
 
-    # Calculates a ratio that can indicate whether an eye is closed or not.
-    # It's the division of the width of the eye, by its height.
-    # Arguments:
-    #     landmarks (dlib.full_object_detection): Facial landmarks for the face region
-    #     points (list): Points of an eye (from the 68 Multi-PIE landmarks)
-    # Returns:
-    #     The computed ratio
     def _blinking_ratio(self, landmarks, points):
+        """
+        Calculates a ratio that can indicate whether an eye is closed or not.
+        It's the division of the width of the eye, by its height.
+
+        :param landmarks (dlib.full_object_detection): Facial landmarks for the face region
+        :param points (list): Points of an eye (from the 68 Multi-PIE landmarks)
+        :return: the computed ratio
+        """
         left = (landmarks.part(points[0]).x, landmarks.part(points[0]).y)
         right = (landmarks.part(points[3]).x, landmarks.part(points[3]).y)
         top = self._middle_point(landmarks.part(points[1]), landmarks.part(points[2]))
@@ -87,14 +95,17 @@ class Eye(object):
 
         return ratio
 
-    # Detects and isolates the eye in a new frame, sends data to the calibration
-    # and initializes Pupil object.
-    # Arguments:
-    #     original_frame (numpy.ndarray): Frame passed by the user
-    #     landmarks (dlib.full_object_detection): Facial landmarks for the face region
-    #     side: Indicates whether it's the left eye (0) or the right eye (1)
-    #     calibration (calibration.Calibration): Manages the binarization threshold value
     def _analyze(self, original_frame, landmarks, side, calibration):
+        """
+        Detects and isolates the eye in a new frame, sends data to the calibration
+        and initializes Pupil object.
+
+        :param original_frame (numpy.ndarray): Frame passed by the user
+        :param landmarks (dlib.full_object_detection): Facial landmarks for the face region
+        :param side: Indicates whether it's the left eye (0) or the right eye (1)
+        :param calibration (calibration.Calibration): Manages the binarization threshold value
+        :return: -
+        """
         if side == 0:
             points = self.LEFT_EYE_POINTS
         elif side == 1:

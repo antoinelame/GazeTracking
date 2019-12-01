@@ -11,7 +11,7 @@ This is a Python (2 and 3) library that provides a **webcam-based eye tracking s
 
 ## Installation
 
-This project was cloned from:
+Clone this project:
 
 ```
 git clone https://github.com/antoinelame/GazeTracking.git
@@ -21,48 +21,124 @@ In case you want to version handle this project in your own repo, you will need 
 that is the trained face recognition model used for detecting facial landmarks. 
 Install git-lfs: https://gitlab.ida.liu.se/help/workflow/lfs/manage_large_binaries_with_git_lfs.md
 
-Install these dependencies (NumPy, OpenCV, Dlib):
+Install these dependencies (NumPy, OpenCV, Dlib), as well as other dependencies:
 
 ```
 pip install -r requirements.txt
 ```
 
-> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you doesn't have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
+> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you do not have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
 
 Run the demo:
 
 ```
-python example.py
+python epog.py
 ```
 
 ## Simple Demo
 
 ```python
+#!/usr/bin/env python
+
+
+"""
+Demonstration of the eye point of gaze (EPOG) tracking library.
+
+Call like this:
+>> ./epog.py 'log_file_prefix' '1'
+
+'log_file_prefix': a file is created for every run
+'1': do stabilize estimated EPOG w.r.t. previous cluster of EPOGs
+'0': allow spurious EPOGs (do not stabilize)
+
+Check the README.md for complete documentation.
+"""
+
+
+from __future__ import division
+import sys
 import cv2
 from gaze_tracking import GazeTracking
+from gaze_tracking.gazecalibration import GazeCalibration
+from gaze_tracking.iriscalibration import IrisCalibration
+from screeninfo import get_monitors
 
-gaze = GazeTracking()
+user_id = sys.argv[1]
+if sys.argv[2] == '1':
+    stabilize = True
+else:
+    stabilize = False
+print(user_id, stabilize)
+
+
+def setup_iris_calib_window():
+    """Window setup (window will be adjusted to the webcam-frame size,
+    and will hold the annotated face of the user)
+    """
+    cv2.namedWindow('Iris', cv2.WINDOW_AUTOSIZE)
+    cv2.moveWindow('Iris', 0, 0)
+    return 'Iris'
+
+
+def setup_gaze_calib_window():
+    """
+    Window setup (window is full-screen and will hold the calibration frame,
+    displaying a series of red calibration points.)
+    """
+    cv2.namedWindow('Calibration', cv2.WINDOW_AUTOSIZE)
+    cv2.setWindowProperty('Calibration', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    return 'Calibration'
+
+
+# Monitor ex: (x=0, y=0, width=1440, height=900, name=None)
+monitor = get_monitors()[0]
+calib_window = setup_gaze_calib_window()
 webcam = cv2.VideoCapture(0)
+# iris_window = setup_iris_calib_window()
+windows_closed = False
+iris_calib = IrisCalibration()
+gaze = GazeTracking(iris_calib, monitor, stabilize)
+gaze_calib = GazeCalibration(webcam, monitor, user_id, stabilize)
 
 while True:
+    # We get a new frame from the webcam
     _, frame = webcam.read()
-    gaze.refresh(frame)
+    if frame is not None:
 
-    new_frame = gaze.annotated_frame()
-    text = ""
+        # We send this frame to GazeTracking to analyze it
+        gaze.refresh(frame)
 
-    if gaze.is_right():
-        text = "Looking right"
-    elif gaze.is_left():
-        text = "Looking left"
-    elif gaze.is_center():
-        text = "Looking center"
+        # calibrate iris_detection and annotate frame with pupil-landmarks
+        if not iris_calib.is_complete():
+            # rect = cv2.getWindowImageRect(iris_window)
+            # cv2.moveWindow(iris_window, -rect[0], -rect[1])
+            cam_frame = gaze.annotated_frame()
+            # cv2.imshow(iris_window, cam_frame)
+        # calibrate the mapping from pupil to screen coordinates
+        elif not gaze_calib.is_completed():
+            # cv2.destroyWindow(iris_window)
+            rect = cv2.getWindowImageRect(calib_window)
+            cv2.moveWindow(calib_window, -rect[0], -rect[1])
+            calib_frame = gaze_calib.calibrate_gaze(gaze)
+            cv2.imshow(calib_window, calib_frame)
+        # test the mapping
+        elif not gaze_calib.is_tested():
+            calib_frame = gaze_calib.test_gaze(gaze)
+            cv2.imshow(calib_window, calib_frame)
+        # track eye point of gaze on the screen
+        elif not windows_closed:
+            cv2.destroyAllWindows()
+            windows_closed = True
+            break  # TODO: remove this line when in production
+        # continue to unobtrusively estimate eye point of gaze
+        else:
+            screen_x, screen_y = gaze.point_of_gaze(gaze_calib)
 
-    cv2.putText(new_frame, text, (60, 60), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 0, 0), 2)
-    cv2.imshow("Demo", new_frame)
-
-    if cv2.waitKey(1) == 27:
-        break
+        if cv2.waitKey(1) == 27:  # Esc
+            # When everything done, release video capture
+            webcam.release()
+            cv2.destroyAllWindows()
+            break
 ```
 
 ## Documentation
