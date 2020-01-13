@@ -76,8 +76,8 @@ if sys.argv.__len__() > 1:
 test_error_file = None
 if sys.argv.__len__() > 2:
     prefix = sys.argv[2]
-    if not os.path.isdir('test_errors'):
-        os.makedirs('test_errors')
+    if not os.path.isdir('../../../../../../../PycharmProjects/EpogEvaluation/test_errors'):
+        os.makedirs('../../../../../../../PycharmProjects/EpogEvaluation/test_errors')
     if stabilize is True:
         test_error_file = open('test_errors/' + prefix + '_stab_' +
                                datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')

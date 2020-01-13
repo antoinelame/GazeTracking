@@ -4,6 +4,7 @@ import math
 import cv2
 import numpy as np
 from random import randint
+import logging
 
 
 class GazeCalibration(object):
@@ -12,7 +13,15 @@ class GazeCalibration(object):
     that the user is looking at.
     """
 
-    def __init__(self, webcam, monitor, test_error_file):
+    def __init__(self, gaze_tracking, monitor, test_error_file):
+        """
+        :param gaze_tracking: GazeTracking object holding the detected values for eye and iris
+        :param monitor: monitor size in pixels (w, h)
+        :param test_error_file: file where epog test errors can be logged (can be None)
+        """
+        self.logger = logging.getLogger(__name__)
+
+        self.gaze_tracking = gaze_tracking
         self.leftmost_hr = 0
         self.rightmost_hr = 0
         self.top_vr = 0
@@ -22,8 +31,6 @@ class GazeCalibration(object):
         self.hr = []
         self.vr = []
 
-        self.cam_frame_size = [int(webcam.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                               int(webcam.get(cv2.CAP_PROP_FRAME_HEIGHT))]
         self.circle_rad = 20
         self.fs_frame = self.setup_calib_frame(monitor)  # make it same size as the monitor
         self.fsh, self.fsw = self.fs_frame.shape[:2]
@@ -86,19 +93,17 @@ class GazeCalibration(object):
             test_points.append((randint(minx, maxx), randint(miny, maxy)))
         return test_points
 
-    @staticmethod
-    def setup_calib_frame(monitor):
+    def setup_calib_frame(self, monitor):
         """Sets up full-screen window that will hold the annotated calibration frame"""
-        fullscreen_frame = np.zeros((monitor.height, monitor.width, 3), np.uint8)
+        self.logger.debug('Monitor resolution {} x {}'.format(monitor['height'], monitor['width']))
+        fullscreen_frame = np.zeros((monitor['height'], monitor['width'], 3), np.uint8)
         return fullscreen_frame
 
-    def calibrate_gaze(self, gaze):
+    def calibrate_gaze(self):
         """
         Display a fixation circle at the fixation point for fix_nb number of frames.
         During the last cal_nb frames, record the gaze ratios for the fixation point.
         Calibration points are presumed to be on the borders of the screen.
-        :param gaze: a GazeTracking object (used to obtain gaze ratios for various
-        calibration and test points)
         """
         self.fs_frame.fill(50)
         if self.calib_p < self.nb_calib_points:
@@ -110,44 +115,40 @@ class GazeCalibration(object):
                 self.fixation_frame = self.fixation_frame + 1
             elif self.calib_frame < self.nb_calib_frames:
                 self.prompt_fixation(self.calib_p)
-                self.record_gaze_and_iris(self.calib_p, gaze)
+                self.record_gaze_and_iris(self.calib_p)
                 self.calib_frame = self.calib_frame + 1
-            # all ratios collected for this calib point
             else:
-                ratios = self.calib_ratios[self.calib_p]
-                nb_r = len(ratios)
-                hr = 0
-                vr = 0
-                for p in range(nb_r):
-                    hr = hr + ratios[p][0]
-                    vr = vr + ratios[p][1]
-                try:
-                    self.calib_ratios[self.calib_p] = [hr / nb_r, vr / nb_r]
-                except ZeroDivisionError:
-                    self.calib_ratios[self.calib_p] = [None, None]
+                self.calib_ratios[self.calib_p] = cluster_ratios_for_calib_point(self.calib_ratios[self.calib_p])
                 self.calib_p = self.calib_p + 1
                 self.fixation_frame = 0
                 self.calib_frame = 0
-        # extract the avg ratio for the rightmost, etc. calibration point coordinates
         else:
+            # extract the avg ratio for the rightmost, etc. calibration point coordinates
+            self.logger.debug('Clustered ratios: ' + ' '.join(map(str, self.calib_ratios)))
             vert_nb_p = self.nb_p[0]
             hor_nb_p = self.nb_p[1]
+            leftmost_hrs = []
+            rightmost_hrs = []
+            top_vrs = []
+            bottom_vrs = []
             for v in range(vert_nb_p):
                 for h in range(hor_nb_p):
                     i = v * vert_nb_p + h
                     if self.calib_ratios[i] is not None:
                         if h == 0:
-                            self.leftmost_hr = self.leftmost_hr + self.calib_ratios[i][0]
+                            leftmost_hrs.append(self.calib_ratios[i][0])
                         elif h == hor_nb_p - 1:
-                            self.rightmost_hr = self.rightmost_hr + self.calib_ratios[i][0]
+                            rightmost_hrs.append(self.calib_ratios[i][0])
                         if v == 0:
-                            self.top_vr = self.top_vr + self.calib_ratios[i][1]
+                            top_vrs.append(self.calib_ratios[i][1])
                         elif v == vert_nb_p - 1:
-                            self.bottom_vr = self.bottom_vr + self.calib_ratios[i][1]
-            self.leftmost_hr = self.leftmost_hr / vert_nb_p
-            self.rightmost_hr = self.rightmost_hr / vert_nb_p
-            self.top_vr = self.top_vr / hor_nb_p
-            self.bottom_vr = self.bottom_vr / hor_nb_p
+                            bottom_vrs.append(self.calib_ratios[i][1])
+            self.leftmost_hr = density_based_1d_cluster(leftmost_hrs)
+            self.rightmost_hr = density_based_1d_cluster(rightmost_hrs)
+            self.top_vr = density_based_1d_cluster(top_vrs)
+            self.bottom_vr = density_based_1d_cluster(bottom_vrs)
+            self.logger.debug('Extreme ratios: left {} right {} top {} bottom {}'
+                              .format(self.leftmost_hr, self.rightmost_hr, self.top_vr, self.bottom_vr))
 
             # take the average of the recorded iris sizes
             self.base_iris_size = self.base_iris_size / self.iris_size_div
@@ -155,11 +156,11 @@ class GazeCalibration(object):
         return self.fs_frame
 
     def display_instruction(self):
-        """Display a fixation point during a number of frames"""
-        # draw a red calibration circle. Params: center, rad, color, ..
-        cv2.putText(self.fs_frame, 'Please, fixate on the red dots', (280, 200),
+        """Display a fixation point (to be called during a sequence of frames)"""
+        # cv2.putText(img, text, (org), font, fontScale, color, thickness, linetype)
+        cv2.putText(self.fs_frame, 'Please, fixate on the red dots', (80, 200),
                     cv2.FONT_HERSHEY_DUPLEX, 1.7, (0, 0, 255), 1)
-        cv2.putText(self.fs_frame, 'Click on the window!', (380, 300),
+        cv2.putText(self.fs_frame, 'Click on the window!', (80, 300),
                     cv2.FONT_HERSHEY_DUPLEX, 1.7, (0, 0, 255), 1)
 
     def prompt_fixation(self, calib_p):
@@ -167,23 +168,23 @@ class GazeCalibration(object):
         # draw a red calibration circle. Params: center, rad, color, ..
         cv2.circle(self.fs_frame, self.calib_points[calib_p], self.circle_rad, (0, 0, 255), -1)
 
-    def record_gaze_and_iris(self, calib_p, gaze):
+    def record_gaze_and_iris(self, calib_p):
         """
         Gets the min and max from the gaze ratios that are obtained for this
         calibration point in order to establish the screen "boundaries"
         """
-        hr = gaze.horizontal_ratio()
-        vr = gaze.vertical_ratio()
+        hr = self.gaze_tracking.horizontal_ratio()
+        vr = self.gaze_tracking.vertical_ratio()
         if hr is not None and vr is not None:
             self.calib_ratios[calib_p].append([hr, vr])
 
         # point is in the middle of the screen: record base iris diameter (for later comparison)
         if self.calib_points[calib_p][0] == self.fsw // 2 and self.calib_points[calib_p][1] == self.fsh // 2:
-            iris_diam = gaze.measure_iris_diameter()
+            iris_diam = self.measure_iris_diameter()
             self.base_iris_size = self.base_iris_size + iris_diam
             self.iris_size_div = self.iris_size_div + 1
 
-    def test_gaze(self, gaze):
+    def test_gaze(self, pog):
         """
         Displays test points (red circle), and estimated gaze (lightgrey smaller dots) on
         the screen (in the frame).
@@ -194,16 +195,16 @@ class GazeCalibration(object):
             if self.test_frame < self.nb_test_frames:
                 # draw a red test.py circle. Params: center, rad, color, ..
                 cv2.circle(self.fs_frame, self.test_points[self.test_p], self.circle_rad, (0, 0, 255), -1)
-                # draw a small lightgray marker where the gaze is estimated to be on the screen
-                try:
-                    est_x, est_y = gaze.point_of_gaze(self)
+                est_x, est_y = pog.point_of_gaze()
+                if type(est_x) is int and type(est_y) is int:
+                    # draw a small lightgray marker where the gaze is estimated to be on the screen
                     cv2.circle(self.fs_frame, (est_x, est_y), self.circle_rad // 4, (170, 170, 170), -1)
                     err = self.calc_error((est_x, est_y), self.test_points[self.test_p])
                     if self.test_error_file is not None:
                         self.test_error_file.write("%f\n" % err)
+                    self.logger.debug('Testp {} epog {} err {}'
+                                      .format(self.test_points[self.test_p], (est_x, est_y), int(round(err))))
 
-                except TypeError:
-                    pass
                 self.test_frame = self.test_frame + 1
             else:
                 self.test_p = self.test_p + 1
@@ -215,6 +216,23 @@ class GazeCalibration(object):
 
         return self.fs_frame
 
+    def measure_iris_diameter(self):
+        """
+        :return: Returns the iris diameter based on the absolute size (number of pixels)
+        that the iris takes up on the surface of the eye frame.
+        """
+        #  frame: (numpy.ndarray) Binarized iris frame, i.e. eye-sized frame,
+        #  where only the iris is visible (is black).
+        right_frame = self.gaze_tracking.eye_right.frame[5:-5, 5:-5]
+        left_frame = self.gaze_tracking.eye_left.frame[5:-5, 5:-5]
+        nb_blacks_r = cv2.countNonZero(right_frame)
+        nb_blacks_l = cv2.countNonZero(left_frame)
+        # nb_blacks: approximation for iris area, a = rad^2 * pi
+        rad_r = math.sqrt(nb_blacks_r / math.pi)
+        rad_l = math.sqrt(nb_blacks_l / math.pi)
+        # return diameter (at the same time also averaging over the radius of right and left eye)
+        return rad_r + rad_l
+
     @staticmethod
     def calc_error(p1, p2):
         dist = math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
@@ -225,3 +243,42 @@ class GazeCalibration(object):
 
     def is_tested(self):
         return self.test_completed
+
+
+def cluster_ratios_for_calib_point(ratios):
+    """
+    Cluster the ratios obtained from the given calibration point. Several ratios were measured
+    through a series of consecutive time steps. These measures were affected by noise, and must
+    therefore to be consolidated into one best representative measure.
+
+    :param ratios: list of ratios [[h_ratio, v_ratio], ..., [h_ratio, v_ratio]]
+    obtained from consecutive measurements at a calibration point
+    :return: representative (most frequent) ratio [h_ratio, v_ratio]
+    """
+    # determine the most representative hr- and vr-ratio for this fixation point
+
+    hrs = np.zeros(len(ratios), np.double)
+    vrs = np.zeros(len(ratios), np.double)
+    i = 0
+    for [hr, vr] in ratios:
+        # split the point ratios into hor and vert components
+        hrs[i] = hr
+        vrs[i] = vr
+        i = i + 1
+    best_hr = density_based_1d_cluster(hrs)
+    best_vr = density_based_1d_cluster(vrs)
+    return [best_hr, best_vr]
+
+
+def density_based_1d_cluster(series):
+    """
+    Function for determining a best value from a series of noisy measurements of
+    the same underlying (unknown) value.
+
+    :param series: a sequence of noisy values representing the same measure
+    :return: best value, i.e. from the densest, area in the series
+    """
+    hist, bins = np.histogram(series, bins='auto')
+    ix = np.argmax(hist)
+    best_val = (bins[ix] + bins[ix + 1]) / 2
+    return best_val

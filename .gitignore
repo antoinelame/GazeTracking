@@ -1,7 +1,9 @@
-# Project-specific log-files
-*test_errors/
+# Platform- and IDE-specific files
 .DS_Store
 .idea/
+
+# Virtual environment
+*venv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
