@@ -26,14 +26,10 @@ import gaze_tracking as gt
 # sets up webcam, and calibration windows
 epog = gt.EPOG(sys.argv)
 
-# setup webcam
-# A webcam resolution of 1280 x 720 or higher is recommended.
-webcam = epog.setup_webcam()
-
 
 while True:
     # We get a new frame from the webcam
-    _, frame = webcam.read()
+    _, frame = epog.webcam.read()
     if frame is not None:
         # Analyze gaze direction and map to screen coordinates
         # coords will be None for a few initial frames,
@@ -45,12 +41,18 @@ while True:
         #   ...
 
         # TODO: remove these two lines to continue to measure epog after calibration and testing
-        if epog.gaze_calib.is_tested():
-            break
+        # if epog.gaze_calib.is_tested():
+        #     break
 
         # Press Esc to quit
+        # Note: The waitkey function is the only method in HighGUI that can fetch and handle events,
+        # so it needs to be called periodically for normal event processing unless HighGUI
+        # is used within an environment that takes care of event processing.
+        # Note: The waitkey function only works if there is at least one HighGUI window created and
+        # the window is active. If there are several HighGUI windows, any of them can be active.
+        # (https://docs.opencv.org/2.4/modules/highgui/doc/user_interface.html)
         if cv2.waitKey(1) == 27:
             # Release video capture
-            webcam.release()
+            epog.webcam.release()
             cv2.destroyAllWindows()
             break

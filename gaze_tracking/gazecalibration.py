@@ -26,6 +26,8 @@ class GazeCalibration(object):
         self.rightmost_hr = 0
         self.top_vr = 0
         self.bottom_vr = 0
+        # important that there is a calib point in the center of the screen, so that iris size can be calibrated
+        # so, only use odd numbers for nb_p below
         self.nb_p = [3, 3]  # (vert_nb_p, hor_nb_p)
         # holding the avg ratios obtained for each calibration point
         self.hr = []
@@ -35,7 +37,7 @@ class GazeCalibration(object):
         self.fs_frame = self.setup_calib_frame(monitor)  # make it same size as the monitor
         self.fsh, self.fsw = self.fs_frame.shape[:2]
         self.nb_calib_points, self.calib_points = self.setup_calib_points()
-        self.nb_test_points = 5
+        self.nb_test_points = 1
         self.test_points = self.setup_test_points()
 
         self.calib_ratios = []
@@ -45,16 +47,16 @@ class GazeCalibration(object):
         self.iris_size_div = 0
 
         self.nb_instr_frames = 20  # display brief instruction on how to calibrate
-        self.nb_fixation_frames = 5  # show the fixation dot for this many video frames
+        self.nb_fixation_frames = 5  # show the fixation dot for this many video frames before measuring starts
         self.nb_calib_frames = 10  # calibrate for this many frames (after the user has fixated on the dot)
-        self.nb_test_frames = 20  # show test.py point for these many frames
+        self.nb_test_frames = 20  # show test point for these many frames
 
         # counters to keep track of the calibration process
         self.instr_frame = 0  # counter for how many instruction frames that has been displayed
         self.calib_p = 0  # which calibration point to display
         self.fixation_frame = 0  # which fixation frame we're at for a calibration point
         self.calib_frame = 0  # how many calibration frames we're at
-        self.test_p = 0  # which test.py point to display (and test.py against)
+        self.test_p = 0  # which test point to display (and test.py against)
         self.test_frame = 0  # how many frames we're at
 
         self.test_error_file = test_error_file
@@ -150,9 +152,10 @@ class GazeCalibration(object):
             self.logger.debug('Extreme ratios: left {} right {} top {} bottom {}'
                               .format(self.leftmost_hr, self.rightmost_hr, self.top_vr, self.bottom_vr))
 
-            # take the average of the recorded iris sizes
-            self.base_iris_size = self.base_iris_size / self.iris_size_div
-            self.calib_completed = True
+            # take the average of the recorded iris sizes, provided that there are data on this
+            if self.iris_size_div > 0:
+                self.base_iris_size = self.base_iris_size / self.iris_size_div
+                self.calib_completed = True
         return self.fs_frame
 
     def display_instruction(self):
@@ -223,15 +226,31 @@ class GazeCalibration(object):
         """
         #  frame: (numpy.ndarray) Binarized iris frame, i.e. eye-sized frame,
         #  where only the iris is visible (is black).
-        right_frame = self.gaze_tracking.eye_right.frame[5:-5, 5:-5]
-        left_frame = self.gaze_tracking.eye_left.frame[5:-5, 5:-5]
-        nb_blacks_r = cv2.countNonZero(right_frame)
-        nb_blacks_l = cv2.countNonZero(left_frame)
-        # nb_blacks: approximation for iris area, a = rad^2 * pi
-        rad_r = math.sqrt(nb_blacks_r / math.pi)
-        rad_l = math.sqrt(nb_blacks_l / math.pi)
+        if self.gaze_tracking.eye_right is not None:
+            right_frame = self.gaze_tracking.eye_right.frame[5:-5, 5:-5]
+            # nb_blacks: approximation for iris area, a = rad^2 * pi
+            nb_blacks_r = cv2.countNonZero(right_frame)
+            rad_r = math.sqrt(nb_blacks_r / math.pi)
+        else:
+            rad_r = None
+        if self.gaze_tracking.eye_left is not None:
+            left_frame = self.gaze_tracking.eye_left.frame[5:-5, 5:-5]
+            # nb_blacks: approximation for iris area, a = rad^2 * pi
+            nb_blacks_l = cv2.countNonZero(left_frame)
+            rad_l = math.sqrt(nb_blacks_l / math.pi)
+        else:
+            rad_l = None
         # return diameter (at the same time also averaging over the radius of right and left eye)
-        return rad_r + rad_l
+        if rad_r is None:
+            if rad_l is None:
+                diam = 30  # use a typical value as default
+            else:
+                diam = rad_l * 2
+        elif rad_l is None:
+            diam = rad_r * 2
+        else:
+            diam = rad_r + rad_l
+        return diam
 
     @staticmethod
     def calc_error(p1, p2):

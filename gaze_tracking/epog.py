@@ -37,11 +37,10 @@ class EPOG(object):
 
         self.test_error_file = self.setup_test_error_file(argv)
 
-        # iris_calib_window = self.setup_iris_calib_window()
-        self.gaze_calib_window = self.setup_gaze_calib_window()
+        self.webcam, self.webcam_w, self.webcam_h = self.setup_webcam()
+        self.monitor = gt.get_screensize()  # dict: {width, height}
+        self.calib_window = self.setup_calib_window()  # string: window name
         self.windows_closed = False
-        self.monitor = gt.get_screensize()
-        self.webcam = None
 
         self.iris_calib = gt.IrisCalibration()
         self.gaze_tr = gt.GazeTracking(self.iris_calib)
@@ -70,32 +69,22 @@ class EPOG(object):
             self.logger.info('Stabilize: {}'.format(self.stabilize))
             return None
 
-    @staticmethod
-    def setup_calib_window():
-        """
-        Window setup (window will be adjusted to the webcam-frame size,
-        and will hold the annotated face of the user)
-        """
-        cv2.namedWindow('Iris', cv2.WINDOW_AUTOSIZE)
-        cv2.moveWindow('Iris', 0, 0)
-        return 'Iris'
-
-    @staticmethod
-    def setup_gaze_calib_window():
+    def setup_calib_window(self):
         """
         Window setup (window is full-screen and will hold the calibration frame,
         displaying a series of red calibration points.)
         """
-        cv2.namedWindow('Calibration', cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow('Calibration', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Calibration', self.monitor['width'], self.monitor['height'])
         cv2.setWindowProperty('Calibration', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         return 'Calibration'
 
     def setup_webcam(self):
         self.webcam = cv2.VideoCapture(0)
-        webcam_w = int(self.webcam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        webcam_h = int(self.webcam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.logger.info('Webcam resolution: {} x {}'.format(webcam_w, webcam_h))
-        return self.webcam
+        self.webcam_w = int(self.webcam.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.webcam_h = int(self.webcam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.logger.info('Webcam resolution: {} x {}'.format(self.webcam_w, self.webcam_h))
+        return self.webcam, self.webcam_w, self.webcam_h
 
     def analyze(self, frame):
         # We send this frame to GazeTracking to analyze for gaze direction
@@ -105,29 +94,29 @@ class EPOG(object):
 
         # calibrate iris_detection and annotate frame with pupil-landmarks
         if not self.iris_calib.is_complete():
-            # rect = cv2.getWindowImageRect(iris_window)
-            # cv2.moveWindow(iris_window, -rect[0], -rect[1])
             cam_frame = self.gaze_tr.annotated_frame()
-            # cv2.imshow(iris_window, cam_frame)
+            cv2.imshow(self.calib_window, cam_frame)
 
         # calibrate the mapping from pupil to screen coordinates
         elif not self.gaze_calib.is_completed():
-            # cv2.destroyWindow(iris_window)
-            rect = cv2.getWindowImageRect(self.gaze_calib_window)
-            cv2.moveWindow(self.gaze_calib_window, -rect[0], -rect[1])
+            rect = cv2.getWindowImageRect(self.calib_window)
+            cv2.moveWindow(self.calib_window, -rect[0], -rect[1])
             calib_frame = self.gaze_calib.calibrate_gaze()
-            cv2.imshow(self.gaze_calib_window, calib_frame)
+            cv2.imshow(self.calib_window, calib_frame)
 
         # test the mapping
         elif not self.gaze_calib.is_tested():
             calib_frame = self.gaze_calib.test_gaze(self.pog)
-            cv2.imshow(self.gaze_calib_window, calib_frame)
+            cv2.imshow(self.calib_window, calib_frame)
 
         # continue to unobtrusively estimate eye point of gaze
         else:
             if not self.windows_closed:
                 # get the calibration window out of the way
-                cv2.destroyAllWindows()
+                icon_sz = 50
+                cv2.resizeWindow(self.calib_window, icon_sz, icon_sz)
+                cv2.moveWindow(self.calib_window, self.monitor['width'] - icon_sz,
+                               self.monitor['height'] - icon_sz)
                 self.windows_closed = True
             screen_x, screen_y = self.pog.point_of_gaze()
 
