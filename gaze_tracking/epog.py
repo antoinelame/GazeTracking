@@ -27,17 +27,20 @@ import logging
 
 class EPOG(object):
 
-    def __init__(self, argv):
+    def __init__(self, test_error_dir, argv):
         self.logger = logging.getLogger(__name__)
 
         self.stabilize = False
         if len(argv) > 1:
             if argv[1] == '1':
                 self.stabilize = True
+        self.logger.info('Stabilize: {}'.format(self.stabilize))
 
+        self.test_error_dir = test_error_dir
         self.test_error_file = self.setup_test_error_file(argv)
 
         self.webcam, self.webcam_w, self.webcam_h = self.setup_webcam()
+        self.webcam_estate = self.webcam_w * self.webcam_h
         self.monitor = gt.get_screensize()  # dict: {width, height}
         self.calib_window = self.setup_calib_window()  # string: window name
         self.windows_closed = False
@@ -51,23 +54,17 @@ class EPOG(object):
         test_error_file = None
         if len(argv) > 2:
             prefix = argv[2]
-            test_error_dir = '../../GazeEvaluation/test_errors/'
-            if not os.path.isdir(test_error_dir):
-                os.makedirs(test_error_dir)
+            if not os.path.isdir(self.test_error_dir):
+                os.makedirs(self.test_error_dir)
             if self.stabilize is True:
-                test_error_file = open(test_error_dir + prefix + '_stab_' +
+                test_error_file = open(self.test_error_dir + prefix + '_stab_' +
                                        datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
-                self.logger.info('Stabilize: {}'.format(self.stabilize))
-                self.logger.info('Log test errors in file: {}'.format(test_error_file))
+                self.logger.info('Logging test errors in: {}'.format(test_error_file.name))
             elif self.stabilize is False:
-                test_error_file = open(test_error_dir + prefix + '_raw_' +
+                test_error_file = open(self.test_error_dir + prefix + '_raw_' +
                                        datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
-            self.logger.info('Stabilize: {}'.format(self.stabilize))
-            self.logger.info('Logging test errors in: {}'.format(test_error_file.name))
-            return test_error_file
-        else:
-            self.logger.info('Stabilize: {}'.format(self.stabilize))
-            return None
+                self.logger.info('Logging test errors in: {}'.format(test_error_file.name))
+        return test_error_file
 
     def setup_calib_window(self):
         """
@@ -101,12 +98,12 @@ class EPOG(object):
         elif not self.gaze_calib.is_completed():
             rect = cv2.getWindowImageRect(self.calib_window)
             cv2.moveWindow(self.calib_window, -rect[0], -rect[1])
-            calib_frame = self.gaze_calib.calibrate_gaze()
+            calib_frame = self.gaze_calib.calibrate_gaze(self.webcam_estate)
             cv2.imshow(self.calib_window, calib_frame)
 
         # test the mapping
         elif not self.gaze_calib.is_tested():
-            calib_frame = self.gaze_calib.test_gaze(self.pog)
+            calib_frame = self.gaze_calib.test_gaze(self.pog, self.webcam_estate)
             cv2.imshow(self.calib_window, calib_frame)
 
         # continue to unobtrusively estimate eye point of gaze
@@ -118,6 +115,6 @@ class EPOG(object):
                 cv2.moveWindow(self.calib_window, self.monitor['width'] - icon_sz,
                                self.monitor['height'] - icon_sz)
                 self.windows_closed = True
-            screen_x, screen_y = self.pog.point_of_gaze()
+            screen_x, screen_y = self.pog.point_of_gaze(self.webcam_estate)
 
         return screen_x, screen_y

@@ -37,7 +37,7 @@ class GazeCalibration(object):
         self.fs_frame = self.setup_calib_frame(monitor)  # make it same size as the monitor
         self.fsh, self.fsw = self.fs_frame.shape[:2]
         self.nb_calib_points, self.calib_points = self.setup_calib_points()
-        self.nb_test_points = 1
+        self.nb_test_points = 5
         self.test_points = self.setup_test_points()
 
         self.calib_ratios = []
@@ -101,7 +101,7 @@ class GazeCalibration(object):
         fullscreen_frame = np.zeros((monitor['height'], monitor['width'], 3), np.uint8)
         return fullscreen_frame
 
-    def calibrate_gaze(self):
+    def calibrate_gaze(self, webcam_estate):
         """
         Display a fixation circle at the fixation point for fix_nb number of frames.
         During the last cal_nb frames, record the gaze ratios for the fixation point.
@@ -117,7 +117,7 @@ class GazeCalibration(object):
                 self.fixation_frame = self.fixation_frame + 1
             elif self.calib_frame < self.nb_calib_frames:
                 self.prompt_fixation(self.calib_p)
-                self.record_gaze_and_iris(self.calib_p)
+                self.record_gaze_and_iris(self.calib_p, webcam_estate)
                 self.calib_frame = self.calib_frame + 1
             else:
                 self.calib_ratios[self.calib_p] = cluster_ratios_for_calib_point(self.calib_ratios[self.calib_p])
@@ -171,7 +171,7 @@ class GazeCalibration(object):
         # draw a red calibration circle. Params: center, rad, color, ..
         cv2.circle(self.fs_frame, self.calib_points[calib_p], self.circle_rad, (0, 0, 255), -1)
 
-    def record_gaze_and_iris(self, calib_p):
+    def record_gaze_and_iris(self, calib_p, webcam_estate):
         """
         Gets the min and max from the gaze ratios that are obtained for this
         calibration point in order to establish the screen "boundaries"
@@ -183,30 +183,33 @@ class GazeCalibration(object):
 
         # point is in the middle of the screen: record base iris diameter (for later comparison)
         if self.calib_points[calib_p][0] == self.fsw // 2 and self.calib_points[calib_p][1] == self.fsh // 2:
-            iris_diam = self.measure_iris_diameter()
+            iris_diam = self.measure_iris_diameter(webcam_estate)
             self.base_iris_size = self.base_iris_size + iris_diam
             self.iris_size_div = self.iris_size_div + 1
 
-    def test_gaze(self, pog):
+    def test_gaze(self, pog, webcam_estate):
         """
         Displays test points (red circle), and estimated gaze (lightgrey smaller dots) on
         the screen (in the frame).
         """
         self.fs_frame.fill(50)
         if self.test_p < self.nb_test_points:
+            if self.test_frame == 1:
+                self.logger.debug('Testp {}'.format(self.test_points[self.test_p]))
             # display during nb_test frames
             if self.test_frame < self.nb_test_frames:
                 # draw a red test.py circle. Params: center, rad, color, ..
                 cv2.circle(self.fs_frame, self.test_points[self.test_p], self.circle_rad, (0, 0, 255), -1)
-                est_x, est_y = pog.point_of_gaze()
+                est_x, est_y = pog.point_of_gaze(webcam_estate)
                 if type(est_x) is int and type(est_y) is int:
                     # draw a small lightgray marker where the gaze is estimated to be on the screen
                     cv2.circle(self.fs_frame, (est_x, est_y), self.circle_rad // 4, (170, 170, 170), -1)
                     err = self.calc_error((est_x, est_y), self.test_points[self.test_p])
                     if self.test_error_file is not None:
                         self.test_error_file.write("%f\n" % err)
-                    self.logger.debug('Testp {} epog {} err {}'
-                                      .format(self.test_points[self.test_p], (est_x, est_y), int(round(err))))
+                    # if self.test_frame == 1:
+                    #     self.logger.debug('Testp {} epog {} err {}'
+                    #                       .format(self.test_points[self.test_p], (est_x, est_y), int(round(err))))
 
                 self.test_frame = self.test_frame + 1
             else:
@@ -219,7 +222,7 @@ class GazeCalibration(object):
 
         return self.fs_frame
 
-    def measure_iris_diameter(self):
+    def measure_iris_diameter(self, webcam_estate):
         """
         :return: Returns the iris diameter based on the absolute size (number of pixels)
         that the iris takes up on the surface of the eye frame.
@@ -243,7 +246,8 @@ class GazeCalibration(object):
         # return diameter (at the same time also averaging over the radius of right and left eye)
         if rad_r is None:
             if rad_l is None:
-                diam = 30  # use a typical value as default
+                # use a typical value as default, scaled wrt webcam estate (w x h)
+                diam = (27 * webcam_estate) / (1280 * 1792)
             else:
                 diam = rad_l * 2
         elif rad_l is None:
@@ -289,15 +293,15 @@ def cluster_ratios_for_calib_point(ratios):
     return [best_hr, best_vr]
 
 
-def density_based_1d_cluster(series):
+def density_based_1d_cluster(data):
     """
     Function for determining a best value from a series of noisy measurements of
     the same underlying (unknown) value.
 
-    :param series: a sequence of noisy values representing the same measure
-    :return: best value, i.e. from the densest, area in the series
+    :param data: a sequence of noisy values representing the same measure
+    :return: best value, i.e. from the densest area in the series
     """
-    hist, bins = np.histogram(series, bins='auto')
+    hist, bins = np.histogram(data, bins='auto')
     ix = np.argmax(hist)
     best_val = (bins[ix] + bins[ix + 1]) / 2
     return best_val

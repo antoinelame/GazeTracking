@@ -24,7 +24,8 @@ import gaze_tracking as gt
 
 # setup_epog expects max two args, both optional,
 # sets up webcam, and calibration windows
-epog = gt.EPOG(sys.argv)
+test_error_dir = '../GazeEvaluation/test_errors/'
+epog = gt.EPOG(test_error_dir, sys.argv)
 
 
 while True:
@@ -32,27 +33,32 @@ while True:
     _, frame = epog.webcam.read()
     if frame is not None:
         # Analyze gaze direction and map to screen coordinates
-        # coords will be None for a few initial frames,
-        # before calibration and tests have been completed
         screen_x, screen_y = epog.analyze(frame)
 
-        # if screen_x is not None and screen_y is not None:
-        #   Do something useful with the EPOG data
-        #   ...
+        # Access gaze direction
+        text = ""
+        if epog.gaze_tr.is_right():
+            text = "Looking right"
+        elif epog.gaze_tr.is_left():
+            text = "Looking left"
+        elif epog.gaze_tr.is_center():
+            text = "Looking center"
 
-        # TODO: remove these two lines to continue to measure epog after calibration and testing
-        # if epog.gaze_calib.is_tested():
-        #     break
+        # Use gaze projected onto screen surface
+        # Screen coords will be None for a few initial frames,
+        # before calibration and tests have been completed
+        if screen_x is not None and screen_y is not None:
+            text = "Looking at point {}, {} on the screen".format(screen_x, screen_y)
 
-        # Press Esc to quit
+        # Press Esc to quit the video analysis loop
+        if cv2.waitKey(1) == 27:
+            # Release video capture
+            epog.webcam.release()
+            cv2.destroyAllWindows()
+            break
         # Note: The waitkey function is the only method in HighGUI that can fetch and handle events,
         # so it needs to be called periodically for normal event processing unless HighGUI
         # is used within an environment that takes care of event processing.
         # Note: The waitkey function only works if there is at least one HighGUI window created and
         # the window is active. If there are several HighGUI windows, any of them can be active.
         # (https://docs.opencv.org/2.4/modules/highgui/doc/user_interface.html)
-        if cv2.waitKey(1) == 27:
-            # Release video capture
-            epog.webcam.release()
-            cv2.destroyAllWindows()
-            break
