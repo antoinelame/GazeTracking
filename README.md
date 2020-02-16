@@ -12,8 +12,9 @@ This is a Python (2 and 3) library that provides a **webcam-based eye tracking s
 In addition, you can map pupil position onto screen coordinates, for example, to determine which window the user is looking at.
 
 [![EPOG_demo](https://i.imgur.com/8LxBNQE.gif)](https://i.imgur.com/8LxBNQE.gif)
+(See demo at https://i.imgur.com/8LxBNQE.gif)
 
-User is fixating at the red dots. The small white dots mark the EPOG estimate.
+User is fixating at the red dots on the screen. The small white dots mark the EPOG estimate.
 ## Installation
 
 Clone this project:
