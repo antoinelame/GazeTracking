@@ -9,8 +9,12 @@ This is a Python (2 and 3) library that provides a **webcam-based eye tracking s
 
 [![Demo](https://i.imgur.com/WNqgQkO.gif)](https://youtu.be/YEZMk1P0-yw)
 
-_🚀 Quick note: I'm looking for job opportunities as a software developer, for exciting projects in ambitious companies. Anywhere in the world. Send me an email!_
+In addition, you can map pupil position onto screen coordinates, for example, to determine which window the user is looking at.
 
+[![EPOG_demo](https://i.imgur.com/8LxBNQE.gif)](https://i.imgur.com/8LxBNQE.gif)
+(See demo at https://i.imgur.com/8LxBNQE.gif)
+
+User is fixating at the red dots on the screen. The small white dots mark the EPOG estimate.
 ## Installation
 
 Clone this project:
@@ -19,48 +23,104 @@ Clone this project:
 git clone https://github.com/antoinelame/GazeTracking.git
 ```
 
-Install these dependencies (NumPy, OpenCV, Dlib):
+In case you want to version handle this project in your own repo, you will need to use git-lfs to track the large .dat-file 
+that is the trained face recognition model used for detecting facial landmarks. 
+Install git-lfs: https://gitlab.ida.liu.se/help/workflow/lfs/manage_large_binaries_with_git_lfs.md
+
+Install dependencies (NumPy, OpenCV, Dlib), as well as other dependencies:
 
 ```
 pip install -r requirements.txt
 ```
 
-> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you doesn't have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
+> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you do not have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
+
+In addition, if you want screen-size handling:
+```
+pip install pypiwin32  # for Windows
+```
+```
+pip install pyobjc  # for MacOS
+```
+Screen-size handling in MacOS also requires AppKit, which is included in XCode.
+```
+pip install python3-xlib  # for Linux
+```
 
 Run the demo:
 
 ```
-python example.py
+./epog_example.py
 ```
 
 ## Simple Demo
 
 ```python
-import cv2
-from gaze_tracking import GazeTracking
+#!/usr/bin/env python3
 
-gaze = GazeTracking()
-webcam = cv2.VideoCapture(0)
+
+"""
+Demonstration of how to use the eye point of gaze (EPOG) tracking library.
+
+This example application can be called like this (both args are optional):
+>> ./epog_example.py 1 'log_file_prefix'
+
+'1': stabilize estimated EPOG w.r.t. previous cluster of EPOGs
+'0': allow spurious EPOGs that deviate from cluster (default)
+
+'log_file_prefix': (e.g. user_id) A logfile will be created with the errors, i.e.
+the Euclidean distance (in pixels) between test points and corresponding estimated EPOGs.
+Log file will be e.g. test_errors/'log_file_prefix'_stab_01-12-2019_18.36.44.txt
+If log_file_prefix is omitted, log file will not be created.
+
+Check the README.md for complete documentation.
+"""
+
+import sys
+import cv2
+import gaze_tracking as gt
+
+# setup_epog expects max two args, both optional,
+# sets up webcam, and calibration windows
+test_error_dir = '../GazeEvaluation/test_errors/'
+epog = gt.EPOG(test_error_dir, sys.argv)
+
 
 while True:
-    _, frame = webcam.read()
-    gaze.refresh(frame)
+    # We get a new frame from the webcam
+    _, frame = epog.webcam.read()
+    if frame is not None:
+        # Analyze gaze direction and map to screen coordinates
+        screen_x, screen_y = epog.analyze(frame)
 
-    new_frame = gaze.annotated_frame()
-    text = ""
+        # Access gaze direction
+        text = ""
+        if epog.gaze_tr.is_right():
+            text = "Looking right"
+        elif epog.gaze_tr.is_left():
+            text = "Looking left"
+        elif epog.gaze_tr.is_center():
+            text = "Looking center"
 
-    if gaze.is_right():
-        text = "Looking right"
-    elif gaze.is_left():
-        text = "Looking left"
-    elif gaze.is_center():
-        text = "Looking center"
+        # Use gaze projected onto screen surface
+        # Screen coords will be None for a few initial frames,
+        # before calibration and tests have been completed
+        if screen_x is not None and screen_y is not None:
+            text = "Looking at point {}, {} on the screen".format(screen_x, screen_y)
 
-    cv2.putText(new_frame, text, (60, 60), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 0, 0), 2)
-    cv2.imshow("Demo", new_frame)
+        # Press Esc to quit the video analysis loop
+        if cv2.waitKey(1) == 27:
+            # Release video capture
+            epog.webcam.release()
+            cv2.destroyAllWindows()
+            break
+        # Note: The waitkey function is the only method in HighGUI that can fetch and handle events,
+        # so it needs to be called periodically for normal event processing unless HighGUI
+        # is used within an environment that takes care of event processing.
+        # Note: The waitkey function only works if there is at least one HighGUI window created and
+        # the window is active. If there are several HighGUI windows, any of them can be active.
+        # (https://docs.opencv.org/2.4/modules/highgui/doc/user_interface.html)
 
-    if cv2.waitKey(1) == 27:
-        break
 ```
 
 ## Documentation
