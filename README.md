@@ -9,6 +9,11 @@ This is a Python (2 and 3) library that provides a **webcam-based eye tracking s
 
 [![Demo](https://i.imgur.com/WNqgQkO.gif)](https://youtu.be/YEZMk1P0-yw)
 
+In addition, you can map pupil position onto screen coordinates, for example, to determine which window the user is looking at.
+
+[![EPOG_demo](https://i.imgur.com/8LxBNQE.gif)](https://i.imgur.com/8LxBNQE.gif)
+
+User is fixating at the red dots. The small white dots mark the EPOG estimate.
 ## Installation
 
 Clone this project:
@@ -21,7 +26,7 @@ In case you want to version handle this project in your own repo, you will need 
 that is the trained face recognition model used for detecting facial landmarks. 
 Install git-lfs: https://gitlab.ida.liu.se/help/workflow/lfs/manage_large_binaries_with_git_lfs.md
 
-Install these dependencies (NumPy, OpenCV, Dlib), as well as other dependencies:
+Install dependencies (NumPy, OpenCV, Dlib), as well as other dependencies:
 
 ```
 pip install -r requirements.txt
@@ -29,23 +34,35 @@ pip install -r requirements.txt
 
 > The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you do not have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
 
+In addition, if you want screen-size handling:
+```
+pip install pypiwin32  # for Windows
+```
+```
+pip install pyobjc  # for MacOS
+```
+Screen-size handling in MacOS also requires AppKit, which is included in XCode.
+```
+pip install python3-xlib  # for Linux
+```
+
 Run the demo:
 
 ```
-python epog.py
+./epog_example.py
 ```
 
 ## Simple Demo
 
 ```python
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 """
-Demonstration of the eye point of gaze (EPOG) tracking library.
+Demonstration of how to use the eye point of gaze (EPOG) tracking library.
 
-Call like this:
->> ./epog.py 1 'log_file_prefix'
+This example application can be called like this (both args are optional):
+>> ./epog_example.py 1 'log_file_prefix'
 
 '1': stabilize estimated EPOG w.r.t. previous cluster of EPOGs
 '0': allow spurious EPOGs that deviate from cluster (default)
@@ -58,108 +75,51 @@ If log_file_prefix is omitted, log file will not be created.
 Check the README.md for complete documentation.
 """
 
-from __future__ import division
 import sys
 import cv2
-from gaze_tracking import GazeTracking
-from gaze_tracking.gazecalibration import GazeCalibration
-from gaze_tracking.iriscalibration import IrisCalibration
-from screeninfo import get_monitors
-import datetime
-import os
+import gaze_tracking as gt
 
-stabilize = False
-if sys.argv.__len__() > 1:
-    if sys.argv[1] == '1':
-        stabilize = True
+# setup_epog expects max two args, both optional,
+# sets up webcam, and calibration windows
+test_error_dir = '../GazeEvaluation/test_errors/'
+epog = gt.EPOG(test_error_dir, sys.argv)
 
-test_error_file = None
-if sys.argv.__len__() > 2:
-    prefix = sys.argv[2]
-    if not os.path.isdir('../../../../../../../PycharmProjects/EpogEvaluation/test_errors'):
-        os.makedirs('../../../../../../../PycharmProjects/EpogEvaluation/test_errors')
-    if stabilize is True:
-        test_error_file = open('test_errors/' + prefix + '_stab_' +
-                               datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
-        print('Stabilize: ', stabilize, 'Log test errors in file: ', test_error_file)
-    elif stabilize is False:
-        test_error_file = open('test_errors/' + prefix + '_raw_' +
-                               datetime.datetime.now().strftime("%d-%m-%Y_%H.%M.%S") + '.txt', 'w+')
-    print('Stabilize: ', stabilize, 'Log test errors in file: ', test_error_file)
-else:
-    print('Stabilize: ', stabilize)
-
-
-def setup_iris_calib_window():
-    """Window setup (window will be adjusted to the webcam-frame size,
-    and will hold the annotated face of the user)
-    """
-    cv2.namedWindow('Iris', cv2.WINDOW_AUTOSIZE)
-    cv2.moveWindow('Iris', 0, 0)
-    return 'Iris'
-
-
-def setup_gaze_calib_window():
-    """
-    Window setup (window is full-screen and will hold the calibration frame,
-    displaying a series of red calibration points.)
-    """
-    cv2.namedWindow('Calibration', cv2.WINDOW_AUTOSIZE)
-    cv2.setWindowProperty('Calibration', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    return 'Calibration'
-
-
-# Monitor ex: (x=0, y=0, width=1440, height=900, name=None)
-monitor = get_monitors()[0]
-calib_window = setup_gaze_calib_window()
-webcam = cv2.VideoCapture(0)
-# iris_window = setup_iris_calib_window()
-windows_closed = False
-iris_calib = IrisCalibration()
-gaze = GazeTracking(iris_calib, monitor, stabilize)
-gaze_calib = GazeCalibration(webcam, monitor, test_error_file)
 
 while True:
     # We get a new frame from the webcam
-    _, frame = webcam.read()
+    _, frame = epog.webcam.read()
     if frame is not None:
+        # Analyze gaze direction and map to screen coordinates
+        screen_x, screen_y = epog.analyze(frame)
 
-        # We send this frame to GazeTracking to analyze it
-        gaze.refresh(frame)
+        # Access gaze direction
+        text = ""
+        if epog.gaze_tr.is_right():
+            text = "Looking right"
+        elif epog.gaze_tr.is_left():
+            text = "Looking left"
+        elif epog.gaze_tr.is_center():
+            text = "Looking center"
 
-        # calibrate iris_detection and annotate frame with pupil-landmarks
-        if not iris_calib.is_complete():
-            # rect = cv2.getWindowImageRect(iris_window)
-            # cv2.moveWindow(iris_window, -rect[0], -rect[1])
-            cam_frame = gaze.annotated_frame()
-            # cv2.imshow(iris_window, cam_frame)
-        # calibrate the mapping from pupil to screen coordinates
-        elif not gaze_calib.is_completed():
-            # cv2.destroyWindow(iris_window)
-            rect = cv2.getWindowImageRect(calib_window)
-            cv2.moveWindow(calib_window, -rect[0], -rect[1])
-            calib_frame = gaze_calib.calibrate_gaze(gaze)
-            cv2.imshow(calib_window, calib_frame)
-        # test the mapping
-        elif not gaze_calib.is_tested():
-            calib_frame = gaze_calib.test_gaze(gaze)
-            cv2.imshow(calib_window, calib_frame)
-        # get the calibration window out of the way
-        elif not windows_closed:
-            cv2.destroyAllWindows()
-            windows_closed = True
-            break  # TODO: remove this line when in production
-        # continue to unobtrusively estimate eye point of gaze
-        else:
-            screen_x, screen_y = gaze.point_of_gaze(gaze_calib)
-            if screen_x is not None and screen_y is not None:
-                pass  # or instead do something useful with the EPOG data
+        # Use gaze projected onto screen surface
+        # Screen coords will be None for a few initial frames,
+        # before calibration and tests have been completed
+        if screen_x is not None and screen_y is not None:
+            text = "Looking at point {}, {} on the screen".format(screen_x, screen_y)
 
-        if cv2.waitKey(1) == 27:  # Press Esc to quit
+        # Press Esc to quit the video analysis loop
+        if cv2.waitKey(1) == 27:
             # Release video capture
-            webcam.release()
+            epog.webcam.release()
             cv2.destroyAllWindows()
             break
+        # Note: The waitkey function is the only method in HighGUI that can fetch and handle events,
+        # so it needs to be called periodically for normal event processing unless HighGUI
+        # is used within an environment that takes care of event processing.
+        # Note: The waitkey function only works if there is at least one HighGUI window created and
+        # the window is active. If there are several HighGUI windows, any of them can be active.
+        # (https://docs.opencv.org/2.4/modules/highgui/doc/user_interface.html)
+
 ```
 
 ## Documentation
