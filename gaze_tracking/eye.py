@@ -18,6 +18,7 @@ class Eye(object):
         self.origin = None
         self.center = None
         self.pupil = None
+        self.landmark_points = None
 
         self._analyze(original_frame, landmarks, side, calibration)
 
@@ -43,6 +44,7 @@ class Eye(object):
         """
         region = np.array([(landmarks.part(point).x, landmarks.part(point).y) for point in points])
         region = region.astype(np.int32)
+        self.landmark_points = region
 
         # Applying a mask to get only the eye
         height, width = frame.shape[:2]
