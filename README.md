@@ -30,17 +30,12 @@ pip install -r requirements.txt
 
 
 ### For Anaconda install
-Create a conda environment
+Install these dependencies (NumPy, OpenCV, Dlib):
 
 ```shell
-conda create --name GazeTracking
+conda env create --file environment.yml
+#After creating environment, activate it
 conda activate GazeTracking
-```
-
-```shell
-conda install -c anaconda numpy -y
-conda install -c anaconda opencv -y
-conda install -c conda-forge dlib -y
 ```
 
 
