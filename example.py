@@ -14,7 +14,7 @@ while True:
     ret, frame = webcam.read()
 
     # Quit the program if no webcam is found
-    if ret is None:
+    if ret == False:
         break
 
     # We send this frame to GazeTracking to analyze it
