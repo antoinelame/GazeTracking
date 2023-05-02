@@ -1,0 +1,77 @@
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import pandas as pd
+from imutils.video import FileVideoStream
+from tqdm import tqdm
+
+from gaze_tracking import GazeTracking
+
+parser = ArgumentParser()
+parser.add_argument("path")
+args = parser.parse_args()
+
+video = FileVideoStream(args.path).start()
+
+# Define the batch size
+BATCH_SIZE = 32
+
+
+# Define a function to process a batch of frames
+def process_batch(frames):
+    data = []
+    gaze = GazeTracking()
+    for frame_idx, frame in frames:
+        # We send this frame to GazeTracking to analyze it
+        gaze.refresh(frame)
+        if not gaze.pupils_located:
+            continue
+
+        left_x, left_y = gaze.pupil_left_coords()
+        right_x, right_y = gaze.pupil_right_coords()
+        row = [frame_idx,
+               left_x, left_y,
+               right_x, right_y,
+               gaze.is_blinking()]
+        if gaze.is_center():
+            row.append("C")
+        elif gaze.is_right():
+            row.append("R")
+        elif gaze.is_left():
+            row.append("L")
+        data.append(row)
+    return data
+
+
+frame_idx = []
+data = []
+i = 0
+with tqdm() as pbar:
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        frames = []
+        while True:
+            # We get a new frame from the webcam
+            frame = video.read()
+            if frame is None:
+                break
+            i += 1
+            frames.append((i, frame))
+            if i % BATCH_SIZE == 0:
+                futures.append(executor.submit(process_batch, frames))
+                frames = []
+
+            pbar.update(1)
+        # Process any remaining frames
+        if frames:
+            futures.append(executor.submit(process_batch, frames))
+
+        # Get the landmarks for each batch of frames
+        for future in as_completed(futures):
+            data.extend(future.result())
+
+# out.release()
+output_path = '.'.join(args.path.split(".")[:-1])
+df = pd.DataFrame(data, columns=["frame_idx", "left_x", "left_y", "right_x", "right_y", "blinking", "looking_at"])
+df = df.sort_values(by="frame_idx")
+df.to_csv(output_path + "#EYE.tsv", sep='\t', index=False)
