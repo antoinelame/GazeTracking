@@ -2,6 +2,7 @@ import math
 import numpy as np
 import cv2
 from .pupil import Pupil
+from config import *
 
 
 class Eye(object):
@@ -54,7 +55,7 @@ class Eye(object):
         eye = cv2.bitwise_not(black_frame, frame.copy(), mask=mask)
 
         # Cropping on the eye
-        margin = 5
+        margin = EYE_MARGIN
         min_x = np.min(region[:, 0]) - margin
         max_x = np.max(region[:, 0]) + margin
         min_y = np.min(region[:, 1]) - margin
@@ -117,3 +118,4 @@ class Eye(object):
 
         threshold = calibration.threshold(side)
         self.pupil = Pupil(self.frame, threshold)
+
