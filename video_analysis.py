@@ -39,16 +39,14 @@ def analyze_video(path, max_x: int, output_path_video: str, show=False):
                                  cv2.VideoWriter_fourcc(*'MJPG'),
                                  10, size)
     with tqdm(total=total_frame_count - 3) as pbar:
-        while cap.isOpened():
+        while cap.isOpened(): # if too slow on better computer, perhaps need to apply multithread
             ret, frame = cap.read()
             if ret:
                 gaze.refresh(frame)
                 ratio = gaze.horizontal_ratio()
                 if ratio:
-                    # print(f'for path: {path} ratio: {ratio}')
                     circle_x = calculate_circle_position(ratio, max_x)
                     points.append(circle_x)
-                    # print(f"The circle should be at x={circle_x} in the image.")
                     if show:
                         frame = cv2.circle(frame, (circle_x, int(frame.shape[0] / 2)), radius=20, color=(0, 0, 255),
                                            thickness=-1)
