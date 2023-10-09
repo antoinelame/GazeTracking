@@ -5,7 +5,7 @@ Based on: github.com/antoinelame/GazeTracking
 setting up:
 
 - create a virtual env with python==3.8
-e.g. using conda: ``conda create -n your_name pythony=3.8``
+e.g. using conda: ``conda create -n your_name python=3.8``
 - activate your virtual environment
 - git clone this project
 - install packages by running ``pip install -e .``
