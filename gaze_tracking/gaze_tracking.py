@@ -4,6 +4,9 @@ import cv2
 import dlib
 from .eye import Eye
 from .calibration import Calibration
+import numpy as np
+from config import *
+from scipy.stats import skew
 
 
 class GazeTracking(object):
@@ -82,9 +85,26 @@ class GazeTracking(object):
         the center is 0.5 and the extreme left is 1.0
         """
         if self.pupils_located:
-            pupil_left = self.eye_left.pupil.x / (self.eye_left.center[0] * 2 - 10)
-            pupil_right = self.eye_right.pupil.x / (self.eye_right.center[0] * 2 - 10)
-            return (pupil_left + pupil_right) / 2
+            # get skew of eye. it helps determine whether usr is looking right or left
+            count_right = np.sum(self.eye_right.frame < 255, axis=0)
+            # fourth_25_per = count_right[-int(len(count_right) / 4):]
+            # third_25_per = count_right[int(len(count_right) / 2):-int(len(count_right)/4)]
+            # right_skewness = ((fourth_25_per.sum() * FOURTH_PERCENTILE_WEIGHT +
+            #                    third_25_per.sum() * THIRD_PERCENTILE_WEIGHT)
+            #                   / PERCENTILE_WEIGHT) / count_right.sum()
+            right_skewness = count_right[int(len(count_right) / 2):].sum() / count_right.sum()
+            count_left = np.sum(self.eye_left.frame < 255, axis=0)
+            # fourth_25_per = count_left[-int(len(count_left) / 4):]
+            # third_25_per = count_left[int(len(count_left) / 2):-int(len(count_left)/4)]
+            # left_skewness = ((fourth_25_per.sum() * FOURTH_PERCENTILE_WEIGHT +
+            #                   third_25_per.sum() * THIRD_PERCENTILE_WEIGHT)
+            #                  / PERCENTILE_WEIGHT) / count_left.sum()
+            left_skewness = count_left[int(len(count_left) / 2):].sum() / count_left.sum()
+            skewness = (right_skewness + left_skewness) / 2
+            pupil_left = (self.eye_left.pupil.x - EYE_MARGIN) / (self.eye_left.center[0] * 2 - EYE_MARGIN)
+            pupil_right = (self.eye_right.pupil.x - EYE_MARGIN) / (self.eye_right.center[0] * 2 - EYE_MARGIN)
+            ratio = ((pupil_left + pupil_right) / 2 * PUPIL_WEIGHT + skewness * SKEWNESS_WEIGHT) / ANGLE_TOTAL_WEIGHT
+            return ratio
 
     def vertical_ratio(self):
         """Returns a number between 0.0 and 1.0 that indicates the
