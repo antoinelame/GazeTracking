@@ -77,6 +77,22 @@ while True:
         break
 ```
 
+### Video Inference
+
+```shell
+usage: example_video.py [-h] --vid VID [--output OUTPUT] [--dont_show]
+
+GazeTracking Video Inference.
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --vid VID        path to video
+  --output OUTPUT  inference video name. Only support .avi extension due to
+                   OpenCV 3.4
+  --dont_show      hide imshow window
+```
+
+
 ## Documentation
 
 In the following examples, `gaze` refers to an instance of the `GazeTracking` class.
@@ -166,6 +182,7 @@ Returns the main frame with pupils highlighted.
 Your suggestions, bugs reports and pull requests are welcome and appreciated. You can also starring ⭐️ the project!
 
 If the detection of your pupils is not completely optimal, you can send me a video sample of you looking in different directions. I would use it to improve the algorithm.
+* You can use `example_video.py` to produce a video sample.
 
 ## Licensing
 
