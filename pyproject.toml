@@ -1,0 +1,15 @@
+[project]
+name = "gaze-tracking"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "dlib>=19.24.4",
+    "numpy>=1.26.4",
+    "opencv-python>=4.10.0.82",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
