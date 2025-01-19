@@ -1,4 +1,4 @@
-# Gaze Tracking
+frame = gaze.annotated_frame()gaze.is_blinking()ratio = gaze.horizontal_ratio()ratio = gaze.vertical_ratio()gaze.is_center()# Gaze Tracking
 
 ![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)
 ![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
