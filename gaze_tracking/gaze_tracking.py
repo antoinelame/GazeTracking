@@ -1,4 +1,3 @@
-from __future__ import division
 import os
 import cv2
 import dlib
@@ -14,10 +13,10 @@ class GazeTracking(object):
     """
 
     def __init__(self):
-        self.frame = None
-        self.eye_left = None
-        self.eye_right = None
-        self.calibration = Calibration()
+        self.frame: cv2.typing.MatLike | None = None
+        self.eye_left: Eye | None = None
+        self.eye_right: Eye | None = None
+        self.calibration: Calibration = Calibration()
 
         # _face_detector is used to detect faces
         self._face_detector = dlib.get_frontal_face_detector()
@@ -25,10 +24,12 @@ class GazeTracking(object):
         # _predictor is used to get facial landmarks of a given face
         cwd = os.path.abspath(os.path.dirname(__file__))
         model_path = os.path.abspath(os.path.join(cwd, "trained_models/shape_predictor_68_face_landmarks.dat"))
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Dlib model file not found at {model_path}. Please download 'shape_predictor_68_face_landmarks.dat' and place it in the 'trained_models' directory.")
         self._predictor = dlib.shape_predictor(model_path)
 
     @property
-    def pupils_located(self):
+    def pupils_located(self) -> bool:
         """Check that the pupils have been located"""
         try:
             int(self.eye_left.pupil.x)
@@ -39,7 +40,7 @@ class GazeTracking(object):
         except Exception:
             return False
 
-    def _analyze(self):
+    def _analyze(self) -> None:
         """Detects the face and initialize Eye objects"""
         frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         faces = self._face_detector(frame)
@@ -53,7 +54,7 @@ class GazeTracking(object):
             self.eye_left = None
             self.eye_right = None
 
-    def refresh(self, frame):
+    def refresh(self, frame: cv2.typing.MatLike) -> None:
         """Refreshes the frame and analyzes it.
 
         Arguments:
@@ -62,21 +63,21 @@ class GazeTracking(object):
         self.frame = frame
         self._analyze()
 
-    def pupil_left_coords(self):
+    def pupil_left_coords(self) -> tuple[int, int] | None:
         """Returns the coordinates of the left pupil"""
         if self.pupils_located:
             x = self.eye_left.origin[0] + self.eye_left.pupil.x
             y = self.eye_left.origin[1] + self.eye_left.pupil.y
             return (x, y)
 
-    def pupil_right_coords(self):
+    def pupil_right_coords(self) -> tuple[int, int] | None:
         """Returns the coordinates of the right pupil"""
         if self.pupils_located:
             x = self.eye_right.origin[0] + self.eye_right.pupil.x
             y = self.eye_right.origin[1] + self.eye_right.pupil.y
             return (x, y)
 
-    def horizontal_ratio(self):
+    def horizontal_ratio(self) -> float | None:
         """Returns a number between 0.0 and 1.0 that indicates the
         horizontal direction of the gaze. The extreme right is 0.0,
         the center is 0.5 and the extreme left is 1.0
@@ -86,7 +87,7 @@ class GazeTracking(object):
             pupil_right = self.eye_right.pupil.x / (self.eye_right.center[0] * 2 - 10)
             return (pupil_left + pupil_right) / 2
 
-    def vertical_ratio(self):
+    def vertical_ratio(self) -> float | None:
         """Returns a number between 0.0 and 1.0 that indicates the
         vertical direction of the gaze. The extreme top is 0.0,
         the center is 0.5 and the extreme bottom is 1.0
@@ -96,28 +97,28 @@ class GazeTracking(object):
             pupil_right = self.eye_right.pupil.y / (self.eye_right.center[1] * 2 - 10)
             return (pupil_left + pupil_right) / 2
 
-    def is_right(self):
+    def is_right(self) -> bool | None:
         """Returns true if the user is looking to the right"""
         if self.pupils_located:
             return self.horizontal_ratio() <= 0.35
 
-    def is_left(self):
+    def is_left(self) -> bool | None:
         """Returns true if the user is looking to the left"""
         if self.pupils_located:
             return self.horizontal_ratio() >= 0.65
 
-    def is_center(self):
+    def is_center(self) -> bool | None:
         """Returns true if the user is looking to the center"""
         if self.pupils_located:
             return self.is_right() is not True and self.is_left() is not True
 
-    def is_blinking(self):
+    def is_blinking(self) -> bool | None:
         """Returns true if the user closes his eyes"""
         if self.pupils_located:
             blinking_ratio = (self.eye_left.blinking + self.eye_right.blinking) / 2
             return blinking_ratio > 3.8
 
-    def annotated_frame(self):
+    def annotated_frame(self) -> cv2.typing.MatLike:
         """Returns the main frame with pupils highlighted"""
         frame = self.frame.copy()
 
@@ -131,3 +132,5 @@ class GazeTracking(object):
             cv2.line(frame, (x_right, y_right - 5), (x_right, y_right + 5), color)
 
         return frame
+
+# NOTE: dlib requires CMake and a C++14 compiler. On Apple Silicon, you may need to build dlib from source with the correct architecture flags.
