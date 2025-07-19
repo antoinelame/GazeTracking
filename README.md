@@ -20,17 +20,17 @@ git clone https://github.com/antoinelame/GazeTracking.git
 ```
 
 ### For Pip install
-Install these dependencies (NumPy, OpenCV, Dlib):
+Install these dependencies (NumPy, OpenCV, MediaPipe):
 
 ```shell
 pip install -r requirements.txt
 ```
 
-> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you doesn't have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
+> MediaPipe is much easier to install than dlib and doesn't require additional system dependencies.
 
 
 ### For Anaconda install
-Install these dependencies (NumPy, OpenCV, Dlib):
+Install these dependencies (NumPy, OpenCV, MediaPipe):
 
 ```shell
 conda env create --file environment.yml

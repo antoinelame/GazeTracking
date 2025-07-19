@@ -1,8 +1,7 @@
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 RUN apt-get update
 RUN apt install -y python3
 RUN apt install -y python3-pip
-RUN apt install -y cmake
 RUN apt install -y libsm6
 RUN apt install -y libxext6
 RUN apt install -y libxrender1

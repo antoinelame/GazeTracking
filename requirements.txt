@@ -1,4 +1,4 @@
-dlib==20.0.0
+mediapipe==0.11.1
 numpy==2.2.6
 opencv-python==4.12.0.88
 setuptools==80.9.0
