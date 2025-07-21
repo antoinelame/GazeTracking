@@ -1,4 +1,4 @@
-dlib==19.24.4
-numpy==1.26.4
-opencv-python==4.10.0.82
-setuptools==70.0.0
+mediapipe==0.11.1
+numpy==2.2.6
+opencv-python==4.12.0.88
+setuptools==80.9.0

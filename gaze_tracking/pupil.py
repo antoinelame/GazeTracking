@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from typing import Optional
 
 
 class Pupil(object):
@@ -8,16 +9,16 @@ class Pupil(object):
     the position of the pupil
     """
 
-    def __init__(self, eye_frame, threshold):
-        self.iris_frame = None
-        self.threshold = threshold
-        self.x = None
-        self.y = None
+    def __init__(self, eye_frame: np.ndarray, threshold: int) -> None:
+        self.iris_frame: Optional[np.ndarray] = None
+        self.threshold: int = threshold
+        self.x: Optional[int] = None
+        self.y: Optional[int] = None
 
         self.detect_iris(eye_frame)
 
     @staticmethod
-    def image_processing(eye_frame, threshold):
+    def image_processing(eye_frame: np.ndarray, threshold: int) -> np.ndarray:
         """Performs operations on the eye frame to isolate the iris
 
         Arguments:
@@ -34,7 +35,7 @@ class Pupil(object):
 
         return new_frame
 
-    def detect_iris(self, eye_frame):
+    def detect_iris(self, eye_frame: np.ndarray) -> None:
         """Detects the iris and estimates the position of the iris by
         calculating the centroid.
 
