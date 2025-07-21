@@ -2,6 +2,7 @@ import math
 import numpy as np
 import cv2
 from .pupil import Pupil
+from typing import Optional
 
 
 class Eye(object):
@@ -17,11 +18,11 @@ class Eye(object):
     RIGHT_EYE_POINTS = [33, 160, 158, 133, 153, 144]  # Right eye outer contour
 
     def __init__(self, original_frame: np.ndarray, landmarks, side: int, calibration) -> None:
-        self.frame: np.ndarray | None = None
-        self.origin: tuple[int, int] | None = None
-        self.center: tuple[float, float] | None = None
-        self.pupil: Pupil | None = None
-        self.landmark_points: np.ndarray | None = None
+        self.frame: Optional[np.ndarray] = None
+        self.origin: Optional[tuple[int, int]] = None
+        self.center: Optional[tuple[float, float]] = None
+        self.pupil: Optional[Pupil] = None
+        self.landmark_points: Optional[np.ndarray] = None
 
         self._analyze(original_frame, landmarks, side, calibration)
 
@@ -72,7 +73,7 @@ class Eye(object):
         height, width = self.frame.shape[:2]
         self.center = (width / 2, height / 2)
 
-    def _blinking_ratio(self, landmarks, points: list[int], frame_shape: tuple) -> float | None:
+    def _blinking_ratio(self, landmarks, points: list[int], frame_shape: tuple) -> Optional[float]:
         """Calculates the Eye Aspect Ratio (EAR) that can indicate whether an eye is closed or not.
         EAR = (A + B + C) / (2.0 * D) where A, B, C are vertical distances and D is horizontal distance.
 

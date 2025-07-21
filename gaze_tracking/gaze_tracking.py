@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 from .eye import Eye
 from .calibration import Calibration
+from typing import Optional
 
 
 class GazeTracking(object):
@@ -13,9 +14,9 @@ class GazeTracking(object):
     """
 
     def __init__(self):
-        self.frame: cv2.typing.MatLike | None = None
-        self.eye_left: Eye | None = None
-        self.eye_right: Eye | None = None
+        self.frame: Optional[cv2.typing.MatLike] = None
+        self.eye_left: Optional[Eye] = None
+        self.eye_right: Optional[Eye] = None
         self.calibration: Calibration = Calibration()
 
         # Initialize MediaPipe Face Mesh
@@ -74,7 +75,7 @@ class GazeTracking(object):
         self.frame = frame
         self._analyze()
 
-    def pupil_left_coords(self) -> tuple[int, int] | None:
+    def pupil_left_coords(self) -> Optional[tuple[int, int]]:
         """Returns the coordinates of the left pupil"""
         if self.pupils_located and self.eye_left and self.eye_left.pupil:
             try:
@@ -85,7 +86,7 @@ class GazeTracking(object):
                 return None
         return None
 
-    def pupil_right_coords(self) -> tuple[int, int] | None:
+    def pupil_right_coords(self) -> Optional[tuple[int, int]]:
         """Returns the coordinates of the right pupil"""
         if self.pupils_located and self.eye_right and self.eye_right.pupil:
             try:
@@ -96,7 +97,7 @@ class GazeTracking(object):
                 return None
         return None
 
-    def horizontal_ratio(self) -> float | None:
+    def horizontal_ratio(self) -> Optional[float]:
         """Returns a number between 0.0 and 1.0 that indicates the
         horizontal direction of the gaze. The extreme right is 0.0,
         the center is 0.5 and the extreme left is 1.0
@@ -145,7 +146,7 @@ class GazeTracking(object):
                 return None
         return None
 
-    def vertical_ratio(self) -> float | None:
+    def vertical_ratio(self) -> Optional[float]:
         """Returns a number between 0.0 and 1.0 that indicates the
         vertical direction of the gaze. The extreme top is 0.0,
         the center is 0.5 and the extreme bottom is 1.0
@@ -159,29 +160,29 @@ class GazeTracking(object):
                 return None
         return None
 
-    def is_right(self) -> bool | None:
+    def is_right(self) -> Optional[bool]:
         """Returns true if the user is looking to the right"""
         if self.pupils_located:
             ratio = self.horizontal_ratio()
-            return ratio <= 0.4 if ratio is not None else None
+            return ratio <= 0.45 if ratio is not None else None
         return None
 
-    def is_left(self) -> bool | None:
+    def is_left(self) -> Optional[bool]:
         """Returns true if the user is looking to the left"""
         if self.pupils_located:
             ratio = self.horizontal_ratio()
-            return ratio >= 0.6 if ratio is not None else None
+            return ratio >= 0.55 if ratio is not None else None
         return None
 
-    def is_center(self) -> bool | None:
+    def is_center(self) -> Optional[bool]:
         """Returns true if the user is looking to the center"""
         if self.pupils_located:
             ratio = self.horizontal_ratio()
             if ratio is not None:
-                return 0.4 < ratio < 0.6
+                return 0.45 < ratio < 0.55
         return None
 
-    def is_blinking(self) -> bool | None:
+    def is_blinking(self) -> Optional[bool]:
         """Returns true if the user closes his eyes - DISABLED for gaze direction only"""
         return None
 

@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from typing import Optional
 
 
 class Pupil(object):
@@ -9,10 +10,10 @@ class Pupil(object):
     """
 
     def __init__(self, eye_frame: np.ndarray, threshold: int) -> None:
-        self.iris_frame: np.ndarray | None = None
+        self.iris_frame: Optional[np.ndarray] = None
         self.threshold: int = threshold
-        self.x: int | None = None
-        self.y: int | None = None
+        self.x: Optional[int] = None
+        self.y: Optional[int] = None
 
         self.detect_iris(eye_frame)
 

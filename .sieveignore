@@ -1,0 +1,9 @@
+__pycache__/
+.venv/
+*.png
+*.mp4
+urls.json
+*.jsonl
+from typing import Optional
+
+def _blinking_ratio(self, landmarks, points: list, frame_shape: tuple) -> Optional[float]:
