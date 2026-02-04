@@ -1,4 +1,19 @@
-dlib==19.24.4
-numpy==1.26.4
-opencv-python==4.10.0.82
-setuptools==78.1.1
+# Core dependencies
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# GUI dependencies
+Pillow>=9.0.0  # For image processing in GUI
+
+# Audio dependencies (optional, for alarms)
+pygame>=2.0.0  # Preferred audio library
+# Alternative: playsound>=1.3.0  # Uncomment if pygame not available
+
+# Data handling
+pandas>=1.5.0  # For CSV export (optional, can use built-in csv module)
+
+# Utilities
+setuptools>=65.0.0
+
+# Note: dlib has been removed - system now uses OpenCV exclusively
+# tkinter is typically included with Python, no need to install separately

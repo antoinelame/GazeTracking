@@ -5,7 +5,7 @@ import cv2
 class Pupil(object):
     """
     This class detects the iris of an eye and estimates
-    the position of the pupil
+    the position of the pupil and calculates its diameter.
     """
 
     def __init__(self, eye_frame, threshold):
@@ -13,6 +13,7 @@ class Pupil(object):
         self.threshold = threshold
         self.x = None
         self.y = None
+        self.diameter = None  # Diameter in pixels
 
         self.detect_iris(eye_frame)
 
@@ -36,7 +37,7 @@ class Pupil(object):
 
     def detect_iris(self, eye_frame):
         """Detects the iris and estimates the position of the iris by
-        calculating the centroid.
+        calculating the centroid. Also calculates the diameter.
 
         Arguments:
             eye_frame (numpy.ndarray): Frame containing an eye and nothing else
@@ -47,8 +48,69 @@ class Pupil(object):
         contours = sorted(contours, key=cv2.contourArea)
 
         try:
-            moments = cv2.moments(contours[-2])
-            self.x = int(moments['m10'] / moments['m00'])
-            self.y = int(moments['m01'] / moments['m00'])
+            # Get the largest contour (pupil)
+            pupil_contour = contours[-2] if len(contours) >= 2 else contours[-1]
+            
+            # Calculate centroid
+            moments = cv2.moments(pupil_contour)
+            if moments['m00'] != 0:
+                self.x = int(moments['m10'] / moments['m00'])
+                self.y = int(moments['m01'] / moments['m00'])
+                
+                # Calculate diameter
+                self.diameter = self.calculate_diameter(pupil_contour)
+            else:
+                self.x = None
+                self.y = None
+                self.diameter = None
         except (IndexError, ZeroDivisionError):
-            pass
+            self.x = None
+            self.y = None
+            self.diameter = None
+    
+    def calculate_diameter(self, contour):
+        """
+        Calculate pupil diameter from contour using multiple methods.
+        
+        Arguments:
+            contour: Contour of the pupil
+            
+        Returns:
+            Diameter in pixels (average of multiple methods for accuracy)
+        """
+        if contour is None or len(contour) < 5:
+            return None
+        
+        # Method 1: Using minimum enclosing circle
+        (_, _), radius = cv2.minEnclosingCircle(contour)
+        diameter_circle = radius * 2
+        
+        # Method 2: Using bounding box
+        x, y, w, h = cv2.boundingRect(contour)
+        diameter_box = max(w, h)
+        
+        # Method 3: Using area (assuming circular pupil)
+        area = cv2.contourArea(contour)
+        if area > 0:
+            diameter_area = 2 * np.sqrt(area / np.pi)
+        else:
+            diameter_area = 0
+        
+        # Method 4: Using fitEllipse (most accurate for elliptical pupils)
+        try:
+            if len(contour) >= 5:
+                ellipse = cv2.fitEllipse(contour)
+                (_, _), (width, height), _ = ellipse
+                diameter_ellipse = max(width, height)
+            else:
+                diameter_ellipse = diameter_circle
+        except:
+            diameter_ellipse = diameter_circle
+        
+        # Return average of all methods for robustness
+        diameters = [d for d in [diameter_circle, diameter_box, diameter_area, diameter_ellipse] if d > 0]
+        
+        if len(diameters) > 0:
+            return float(np.mean(diameters))
+        
+        return None
